@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Pro Music Player 🎵</title>
+    
+    <!-- PWA: Inline Manifest injection using data URI -->
+    <link rel="manifest" id="manifest-placeholder">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Mobile Overlay for Sidebar -->
+    <div id="mobile-overlay" onclick="toggleMobileMenu()"></div>
+
+    <!-- Sidebar Section -->
+    <div class="sidebar" id="sidebar">
+        <h2><i class="fab fa-spotify"></i> <span>Pro Music</span></h2>
+        <div class="menu-item active" onclick="loadHome(); setActive(this); toggleMobileMenu();"><i class="fas fa-home"></i> <span>Home</span></div>
+        <div class="menu-item" onclick="document.getElementById('songInput').focus(); setActive(this); toggleMobileMenu();"><i class="fas fa-compass"></i> <span>Search</span></div>
+        <div class="menu-item" onclick="showLanguages(); setActive(this); toggleMobileMenu();"><i class="fas fa-globe"></i> <span>Languages</span></div>
+        <div class="menu-item" onclick="showLibrary(); setActive(this); toggleMobileMenu();"><i class="fas fa-book"></i> <span>Library</span></div>
+        
+        <div class="menu-divider"></div>
+        <div class="menu-item" onclick="showCreatePlaylistModal(); toggleMobileMenu();"><i class="fas fa-plus-circle"></i> <span>New Playlist</span></div>
+        <div class="menu-item" onclick="showLikedSongs(); setActive(this); toggleMobileMenu();"><i class="fas fa-heart" style="color:var(--primary-color);"></i> <span>Liked Songs</span></div>
+        
+        <!-- Mobile Specific Extra Controls in Sidebar -->
+        <div class="menu-divider mobile-only-menu"></div>
+        <p class="mobile-only-menu" style="color:var(--text-muted); font-size:12px; font-weight:800; margin-top:5px; padding-left:15px; text-transform:uppercase; letter-spacing:1px;">Extras (Mobile)</p>
+        <div class="menu-item mobile-only-menu" onclick="toggleQueue(); toggleMobileMenu();"><i class="fas fa-list"></i> <span>Queue</span></div>
+        <div class="menu-item mobile-only-menu" onclick="toggleImmersivePlayer(); toggleMobileMenu();"><i class="fas fa-expand-arrows-alt"></i> <span>Full Screen Player</span></div>
+
+        <div class="menu-divider"></div>
+        <p style="color:var(--text-muted); font-size:12px; font-weight:800; margin-top:10px; padding-left:15px; text-transform:uppercase; letter-spacing:1px;">AI Features ✨</p>
+        <div class="menu-item" onclick="generateAIDJPlaylist(); setActive(this); toggleMobileMenu();">
+            <i class="fas fa-robot" style="color:#e6b3ff; text-shadow: 0 0 10px #a100ff;"></i> 
+            <span style="background: linear-gradient(90deg, #e6b3ff, #a100ff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight:800;">Free AI DJ Mix</span>
+        </div>
+        <div class="menu-item" onclick="startRadio(); setActive(this); toggleMobileMenu();">
+            <i class="fas fa-broadcast-tower" style="color:#ff9800; text-shadow: 0 0 10px #ff9800;"></i> 
+            <span style="font-weight:800; color:#ffb74d;">Custom Radio</span>
+        </div>
+        
+        <div class="menu-divider"></div>
+        <p style="color:var(--text-muted); font-size:12px; font-weight:800; margin-top:5px; padding-left:15px; text-transform:uppercase; letter-spacing:1px;">Settings</p>
+        <div class="menu-item" onclick="resetAppData(); toggleMobileMenu();"><i class="fas fa-sync-alt" style="color:#ff4d4d;"></i> <span>Reset App Data</span></div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <div class="bg-blur" id="bg-blur"></div>
+
+        <div class="topbar">
+            <!-- Mobile Menu Toggle Button -->
+            <i class="fas fa-bars" id="mobile-menu-btn" onclick="toggleMobileMenu()"></i>
+
+            <!-- User Profile & Install -->
+            <div style="display: flex; align-items: center; order: 2; margin-left: auto;">
+                <button id="install-btn" onclick="installPWA()"><i class="fas fa-download"></i> Install App</button>
+                <div class="user-profile" id="user-profile-btn" onclick="showToast('Profile Section (Coming Soon)')" style="margin-left: 15px;">
+                    <img id="profile-img" src="https://i.pravatar.cc/100?img=11" alt="User" loading="lazy">
+                    <span id="profile-name">Guest</span>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="songInput" placeholder="Search songs or artists..." onkeypress="handleKeyPress(event)" onfocus="handleSearchInput()" onblur="hideSearchHistory()" oninput="handleSearchInput()">
+                    <button onclick="searchMusic()">Search</button> 
+                </div>
+                <div id="search-history-dropdown" class="search-dropdown"></div>
+            </div>
+        </div>
+
+        <div class="category-pills" id="category-pills"></div>
+
+        <h1 id="page-title" style="display: none;">Welcome</h1>
+
+        <!-- PWA Install Modal -->
+        <div class="install-modal-overlay" id="install-modal">
+            <div class="install-modal">
+                <i class="fas fa-mobile-alt" style="font-size: 40px; color: var(--primary-color); margin-bottom: 15px;"></i>
+                <h3>Install App</h3>
+                <p>Install this website on your phone or PC like a real app. Run it directly without a browser!</p>
+                <div class="install-btns">
+                    <button class="btn-cancel" onclick="closeInstallModal()">Later</button>
+                    <button class="btn-confirm" onclick="confirmInstall()">Install</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Playlist Modal -->
+        <div class="modal-overlay" id="create-playlist-modal">
+            <div class="custom-modal">
+                <i class="fas fa-folder-plus" style="font-size: 40px; color: var(--primary-color); margin-bottom: 15px;"></i>
+                <h3 style="color: #fff; margin-bottom: 15px; font-size: 20px;">Nayi Playlist Banayein</h3>
+                <input type="text" id="new-playlist-name" class="modal-input" placeholder="Playlist ka naam...">
+                <div class="install-btns">
+                    <button class="btn-cancel" onclick="closeCreatePlaylistModal()">Cancel</button>
+                    <button class="btn-confirm" onclick="saveNewPlaylist()">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add to Playlist Modal -->
+        <div class="modal-overlay" id="add-to-playlist-modal">
+            <div class="custom-modal">
+                <i class="fas fa-list-ul" style="font-size: 40px; color: var(--primary-color); margin-bottom: 15px;"></i>
+                <h3 style="color: #fff; margin-bottom: 15px; font-size: 20px;">Playlist Mein Jodein</h3>
+                <div class="playlist-select-list" id="playlist-options">
+                    <!-- Dynamic list -->
+                </div>
+                <div class="install-btns">
+                    <button class="btn-cancel" onclick="closeAddToPlaylistModal()" style="width: 100%;">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Reset App Modal -->
+        <div class="modal-overlay" id="reset-modal">
+            <div class="custom-modal">
+                <i class="fas fa-exclamation-triangle" style="font-size: 40px; color: #ff4d4d; margin-bottom: 15px;"></i>
+                <h3 style="color: #fff; margin-bottom: 15px; font-size: 20px;">Reset App Data?</h3>
+                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Ye aapke saare Liked Songs, Downloads, Playlists, aur History permanently delete kar dega. Kya aap sure hain?</p>
+                <div class="install-btns">
+                    <button class="btn-cancel" onclick="closeResetModal()">Cancel</button>
+                    <button class="btn-confirm" style="background: #ff4d4d; color: white;" onclick="confirmResetData()">Yes, Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <!-- Right Queue Panel -->
+    <div class="queue-panel" id="queue-panel">
+        <div class="queue-header">
+            <h2>Up Next (Queue)</h2>
+            <button class="close-queue-btn" onclick="toggleQueue()"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="queue-list"></div>
+    </div>
+
+    <!-- Full Screen Immersive Player (PC & Mobile) -->
+    <div class="immersive-player" id="immersive-player">
+        
+        <div class="immersive-left">
+            <div class="immersive-bg" id="immersive-bg"></div>
+            
+            <!-- Live Audio Visualizer (Wapas add kiya gaya hai) -->
+            <canvas id="audio-visualizer" class="visualizer-canvas"></canvas>
+
+            <div class="immersive-content" id="imm-content-area">
+                <div class="immersive-header">
+                    <button class="immersive-close-btn" onclick="toggleImmersivePlayer()"><i class="fas fa-chevron-down"></i></button>
+                    <span style="font-weight: 800; letter-spacing: 1px;">Pro Music <span class="live-badge"><div class="live-dot"></div> LIVE</span></span>
+                </div>
+                
+                <!-- Mobile Specific Big Artwork -->
+                <div class="immersive-mobile-art mobile-only">
+                    <img id="imm-mobile-img" src="https://via.placeholder.com/300" alt="Album Art">
+                </div>
+                
+                <div class="immersive-bottom-section">
+                    <div class="immersive-song-info">
+                        <img id="immersive-img" class="desktop-only-img" src="https://via.placeholder.com/80" alt="Album Art">
+                        <div class="immersive-song-details">
+                            <h2 id="immersive-title">Not Playing</h2>
+                            <p id="immersive-artist">-</p>
+                        </div>
+                        <button class="action-btn" onclick="showAddToPlaylistModal(event)" title="Playlist mein jodein" style="margin-right: 10px;"><i class="fas fa-plus-circle"></i></button>
+                        <button class="action-btn" onclick="toggleLike(event)"><i class="fas fa-heart"></i></button>
+                    </div>
+                    
+                    <!-- Mobile Specific Big Controls -->
+                    <div class="immersive-controls mobile-only-flex">
+                        <div class="imm-progress-area">
+                            <div class="imm-slider-container">
+                                <div class="imm-slider-fill" id="imm-progress-fill"></div>
+                                <div class="imm-slider-thumb" id="imm-progress-thumb"></div>
+                                <input type="range" id="imm-progress-bar" value="0" min="0" max="100" step="0.1" oninput="seekAudioImm()">
+                            </div>
+                            <div class="imm-time-row">
+                                <span id="imm-current-time">0:00</span>
+                                <span id="imm-total-time">0:00</span>
+                            </div>
+                        </div>
+                        
+                        <div class="imm-control-btns">
+                            <button class="ctrl-icon" id="imm-shuffle-btn" onclick="toggleShuffle()"><i class="fas fa-random"></i></button>
+                            <button class="ctrl-icon" onclick="prevSong()"><i class="fas fa-step-backward"></i></button>
+                            <button class="imm-play-btn" id="imm-play-pause-btn" onclick="togglePlay()"><i class="fas fa-play" style="margin-left:4px;"></i></button>
+                            <button class="ctrl-icon" onclick="nextSong()"><i class="fas fa-step-forward"></i></button>
+                            <button class="ctrl-icon" id="imm-repeat-btn" onclick="toggleRepeat()"><i class="fas fa-redo"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="immersive-right">
+            <h3>Up Next (Queue)</h3>
+            <div class="immersive-queue-list" id="immersive-queue-list">
+                <!-- Queue items will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Player -->
+    <div class="bottom-player" id="bottom-player-area">
+        <!-- Clicking song opens Immersive View -->
+        <div class="now-playing" title="Open Full Screen View" onclick="toggleImmersivePlayer();">
+            <img id="np-img" src="" alt="Album Art">
+            <div class="song-info">
+                <div style="display:flex; align-items:center;">
+                    <h4 id="np-title">Not Playing</h4>
+                </div>
+                <p id="np-artist">-</p>
+            </div>
+            <button class="action-btn" id="add-pl-btn" onclick="showAddToPlaylistModal(event); event.stopPropagation();" title="Playlist mein jodein" style="margin-left: 10px; display: none;"><i class="fas fa-plus-circle"></i></button>
+            <button class="like-btn" id="like-btn" onclick="toggleLike(event); event.stopPropagation();"><i class="fas fa-heart"></i></button>
+            <button class="download-btn" id="download-btn" onclick="toggleDownload(event); event.stopPropagation();" title="Download"><i class="fas fa-download"></i></button>
+        </div>
+        
+        <div class="player-controls">
+            <div class="control-btns">
+                <button class="ctrl-icon" id="shuffle-btn" onclick="toggleShuffle()" title="Shuffle"><i class="fas fa-random"></i></button>
+                <button class="ctrl-icon" onclick="prevSong()" title="Previous"><i class="fas fa-step-backward"></i></button>
+                <button class="main-play-btn" id="play-pause-btn" onclick="togglePlay()"><i class="fas fa-play" style="margin-left: 3px;"></i></button>
+                <button class="ctrl-icon" onclick="nextSong()" title="Next"><i class="fas fa-step-forward"></i></button>
+                <button class="ctrl-icon" id="repeat-btn" onclick="toggleRepeat()" title="Repeat"><i class="fas fa-redo"></i></button>
+            </div>
+            <div class="progress-area">
+                <span id="current-time">0:00</span>
+                <div class="slider-container">
+                    <div class="slider-fill" id="progress-fill"></div>
+                    <div class="slider-thumb" id="progress-thumb"></div>
+                    <input type="range" id="progress-bar" value="0" min="0" max="100" step="0.1" oninput="seekAudio()">
+                </div>
+                <span id="total-time">0:00</span>
+            </div>
+            <audio id="global-audio" src="" crossorigin="anonymous"></audio>
+        </div>
+
+        <div class="extra-controls">
+            <button class="action-btn" id="mode-hd-btn" onclick="toggleHDMode()" title="HD Clear Audio On ✨"><i class="fas fa-sparkles"></i></button>
+            
+            <button class="action-btn" id="mode-4d-btn" onclick="toggle4DMode()" title="4D Clear Mode On 🎧 (360 Sound)"><i class="fas fa-cube"></i></button>
+            
+            <button class="action-btn" id="immersive-btn" onclick="toggleImmersivePlayer()" title="Full Screen"><i class="fas fa-expand-arrows-alt"></i></button>
+            <button class="action-btn" id="queue-btn" onclick="toggleQueue()" title="Open Queue"><i class="fas fa-list"></i></button>
+            
+            <div class="volume-area">
+                <i class="fas fa-volume-up" id="vol-icon" onclick="toggleMute()"></i>
+                <div class="slider-container" style="width: 80px;">
+                    <div class="slider-fill" id="vol-fill" style="width: 100%;"></div>
+                    <input type="range" id="volume-bar" value="100" min="0" max="100" step="1" oninput="handleVolumeChange()">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Success!</div>
+
+    <script src="script.js">
+        
+    </script>
+</body>
+</html>
