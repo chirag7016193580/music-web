@@ -1,9 +1,9 @@
-// ==========================================
+  // ==========================================
         // DEVICE INITIALIZATION & MEMORY STORAGE
         // ==========================================
         const DEVICE_INIT_KEY = 'proMusic_device_initialized_v2';
         
-        // FIX: Using actual browser localStorage instead of an in-memory object so data persists across reloads!
+        // Using actual browser localStorage for permanent APK storage
         const memStorage = {
             getItem(key) {
                 try { return localStorage.getItem(key); }
@@ -21,20 +21,22 @@
                     localStorage.removeItem('proMusicUserPlaylists');
                     localStorage.removeItem('proMusicDownloadedSongs');
                     localStorage.removeItem('proMusicLastState');
-                    localStorage.removeItem(DEVICE_INIT_KEY);
+                    // We purposefully DO NOT remove DEVICE_INIT_KEY here during normal clears 
+                    // so it doesn't reset the "new device" logic again unnecessarily.
                 } catch(e) {}
             }
         };
 
-        // 1. Agar naya device hai toh pehle ka garbage delete karke sab fresh start karo
+        // 1. Agar naya device/APK install hai toh pehle ka garbage delete karke fresh start karo
+        // Ye sirf ek baar run hoga zindagi mein per device.
         if (!memStorage.getItem(DEVICE_INIT_KEY)) {
             memStorage.clear();
             memStorage.setItem(DEVICE_INIT_KEY, 'true');
-            console.log("New Device Detected: App Data Reset to Fresh State.");
-            setTimeout(() => { showToast("Welcome! Starting fresh on this device ✨"); }, 1500);
+            console.log("New Device/APK Detected: App Data Reset to Fresh State.");
+            setTimeout(() => { showToast("Welcome to Pro Music App! ✨"); }, 1500);
         }
 
-        // 2. Main Local Storage Variables (Jab user use kare toh data save rahe)
+        // 2. Main Local Storage Variables (Jab user use kare toh data hamesha phone me save rahe)
         let currentPlaylist = []; 
         let currentSongIndex = -1;
         let likedSongs = JSON.parse(memStorage.getItem('proMusicLikedSongs')) || [];
@@ -60,15 +62,6 @@
                 location.reload();
             }, 1500);
         }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            // Agar purana user hai toh assurance do ki uska data restore hua hai
-            if (memStorage.getItem(DEVICE_INIT_KEY)) {
-                if(likedSongs.length > 0 || downloadedSongs.length > 0 || Object.keys(userPlaylists).length > 0) {
-                    setTimeout(() => { showToast("Your data is restored from local storage 🔄"); }, 1500);
-                }
-            }
-        });
 
         // ==========================================
         // CORE UI & PLAYER VARIABLES
@@ -278,13 +271,19 @@
             return (playCountScore * 0.4) + (recentPlayWeight * 0.3) + (genreMatch * 0.1) + (timeMatch * 0.1) + (newReleaseBoost * 0.1);
         }
 
-        window.onload = () => {
+        // FAST LOAD & RESTORE STATE (Fixed Mobile Start Issue)
+        document.addEventListener('DOMContentLoaded', () => {
+            // Restore message for returning users
+            const lastStateStr = memStorage.getItem('proMusicLastState');
+            if (lastStateStr || likedSongs.length > 0) {
+                setTimeout(() => { showToast("Aapka data load ho gaya hai 🔄"); }, 1500);
+            }
+
             renderPills(); 
-            loadHome();    
+            loadHome(); // Turant homepage songs load karo   
             setVolume(1.0); 
 
-            // Resuming from local storage
-            const lastStateStr = memStorage.getItem('proMusicLastState');
+            // Resuming from local storage instantly
             if (lastStateStr) {
                 try {
                     const lastState = JSON.parse(lastStateStr);
@@ -298,20 +297,31 @@
                         document.getElementById('np-img').src = song.image;
                         document.getElementById('np-img').style.display = "block";
                         
-                        document.getElementById('bg-blur').style.backgroundImage = 'none';
+                        document.getElementById('bg-blur').style.backgroundImage = `url('${song.image}')`;
                         
                         likeBtn.style.display = "block";
+                        
+                        const isDownloaded = downloadedSongs.some(s => s.audioUrl === song.audioUrl);
                         if(document.getElementById('download-btn')) {
                            document.getElementById('download-btn').style.display = "block";
-                           const isDownloaded = downloadedSongs.some(s => s.audioUrl === song.audioUrl);
                            document.getElementById('download-btn').classList.toggle('active', isDownloaded);
                         }
+                        if(document.getElementById('imm-download-btn')) {
+                            document.getElementById('imm-download-btn').classList.toggle('active', isDownloaded);
+                        }
+
                         if(document.getElementById('add-pl-btn')) {
                             document.getElementById('add-pl-btn').style.display = "block";
                         }
 
                         const isLiked = likedSongs.some(s => s.title === song.title && s.artist === song.artist);
                         likeBtn.classList.toggle('active', isLiked);
+                        
+                        const immLikeBtns = document.querySelectorAll('.immersive-song-info .action-btn .fa-heart');
+                        immLikeBtns.forEach(icon => {
+                            if(isLiked) icon.parentElement.classList.add('active');
+                            else icon.parentElement.classList.remove('active');
+                        });
 
                         const is4DReady = check4DAvailability(song);
                         mode4dBtn.style.display = is4DReady ? 'inline-block' : 'none';
@@ -319,26 +329,49 @@
                         audioEl.crossOrigin = "anonymous";
                         audioEl.src = song.audioUrl;
                         
+                        // Set the last played time precisely
                         if (lastState.currentTime) {
                             audioEl.currentTime = lastState.currentTime;
+                            // Pre-fill the progress bar visually
+                            if(lastState.duration && lastState.duration > 0) {
+                                const percent = (lastState.currentTime / lastState.duration) * 100;
+                                progressBar.value = percent;
+                                progressFill.style.width = `${percent}%`;
+                                progressThumb.style.left = `${percent}%`;
+                                document.getElementById('current-time').innerText = formatTime(lastState.currentTime);
+                            }
                         }
                         
                         updateQueueUI();
                         updateMediaSession(song);
+                        
+                        // Note: Auto-play is often blocked by mobile browsers/WebViews until user taps 'Play'
+                        // So we leave it paused intentionally, ready to play exactly from where they left off.
+                        playPauseBtn.innerHTML = "<i class='fas fa-play' style='margin-left: 3px;'></i>";
+                        if(document.getElementById('imm-play-pause-btn')) document.getElementById('imm-play-pause-btn').innerHTML = "<i class='fas fa-play' style='margin-left: 3px;'></i>";
                     }
                 } catch(e) {}
             }
-        };
+        });
 
-        window.addEventListener('beforeunload', () => {
-            if (currentPlaylist.length > 0 && currentSongIndex >= 0) {
+        // Save current state helper
+        function saveCurrentState() {
+            if (currentPlaylist.length > 0 && currentSongIndex >= 0 && !isNaN(audioEl.currentTime)) {
                 const state = {
                     playlist: currentPlaylist,
                     index: currentSongIndex,
-                    currentTime: audioEl.currentTime
+                    currentTime: audioEl.currentTime,
+                    duration: audioEl.duration || 0
                 };
                 memStorage.setItem('proMusicLastState', JSON.stringify(state));
             }
+        }
+
+        // Multiple event listeners to ensure state is saved heavily on mobile APKs
+        window.addEventListener('beforeunload', saveCurrentState);
+        window.addEventListener('pagehide', saveCurrentState);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') saveCurrentState();
         });
 
         // --- AUDIO URL EXTRACTOR ---
@@ -1450,18 +1483,31 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             document.getElementById('bg-blur').style.backgroundImage = `url('${song.image}')`;
             
             likeBtn.style.display = "block";
+            
+            // Sync download buttons
+            const isDownloaded = downloadedSongs.some(s => s.audioUrl === song.audioUrl);
             if(document.getElementById('download-btn')) {
                 document.getElementById('download-btn').style.display = "block";
-                const isDownloaded = downloadedSongs.some(s => s.audioUrl === song.audioUrl);
                 document.getElementById('download-btn').classList.toggle('active', isDownloaded);
             }
+            if(document.getElementById('imm-download-btn')) {
+                document.getElementById('imm-download-btn').classList.toggle('active', isDownloaded);
+            }
+
             if(document.getElementById('add-pl-btn')) {
                 document.getElementById('add-pl-btn').style.display = "block";
             }
 
+            // Sync like buttons
             const isLiked = likedSongs.some(s => s.title === song.title && s.artist === song.artist);
             if(isLiked) likeBtn.classList.add('active');
             else likeBtn.classList.remove('active');
+            
+            const immLikeBtns = document.querySelectorAll('.immersive-song-info .action-btn .fa-heart');
+            immLikeBtns.forEach(icon => {
+                if(isLiked) icon.parentElement.classList.add('active');
+                else icon.parentElement.classList.remove('active');
+            });
 
             const is4DReady = check4DAvailability(song);
             if(is4DReady) {
@@ -1835,16 +1881,19 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             if(currentSongIndex === -1) return;
             const song = currentPlaylist[currentSongIndex];
             const btn = document.getElementById('download-btn');
+            const immBtn = document.getElementById('imm-download-btn');
             
             const isDownloadedIndex = downloadedSongs.findIndex(s => s.audioUrl === song.audioUrl);
 
             if(isDownloadedIndex > -1) {
                 downloadedSongs.splice(isDownloadedIndex, 1);
                 if(btn) btn.classList.remove('active');
+                if(immBtn) immBtn.classList.remove('active');
                 showToast("Removed from Downloads");
             } else {
                 downloadedSongs.push(song);
                 if(btn) btn.classList.add('active');
+                if(immBtn) immBtn.classList.add('active');
                 showToast("Song is downloading... ⬇️");
                 
                 const a = document.createElement('a');
@@ -2075,13 +2124,10 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
                 document.getElementById('imm-total-time').innerText = formatTime(audioEl.duration);
             }
 
-            // --- Frequent Save ---
-            if (Math.floor(audioEl.currentTime) % 3 === 0 && currentPlaylist.length > 0) {
-                memStorage.setItem('proMusicLastState', JSON.stringify({
-                    playlist: currentPlaylist,
-                    index: currentSongIndex,
-                    currentTime: audioEl.currentTime
-                }));
+            // --- Frequent Save for Accurate Resume ---
+            // Ab har 1 second mein exact position save hogi taaki app crash/close hone par bhi wahi se start ho
+            if (Math.floor(audioEl.currentTime) % 1 === 0 && currentPlaylist.length > 0) {
+                saveCurrentState();
             }
         });
 
