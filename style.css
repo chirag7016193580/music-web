@@ -86,8 +86,8 @@
         .search-box { display: flex; gap: 10px; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 5px 5px 5px 20px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); transition: 0.3s; width: 100%; align-items: center; box-shadow: 0 8px 32px rgba(0,0,0,0.2); z-index: 101; position: relative; }
         .search-box i.fa-search { color: var(--text-muted); }
         .search-box:focus-within { border-color: var(--primary-color); background: rgba(255,255,255,0.15); box-shadow: 0 8px 32px rgba(29, 185, 84, 0.2); }
-        .search-box input { padding: 10px 10px; flex: 1; border: none; outline: none; background: transparent; color: white; font-size: 15px; font-weight: 500; }
-        .search-box button { padding: 10px 25px; background: #fff; color: #000; border: none; border-radius: 25px; font-weight: 700; cursor: pointer; transition: 0.2s; will-change: transform; }
+        .search-box input { padding: 10px 10px; flex: 1; border: none; outline: none; background: transparent; color: white; font-size: 15px; font-weight: 500; min-width: 0; }
+        .search-box button { padding: 10px 25px; background: #fff; color: #000; border: none; border-radius: 25px; font-weight: 700; cursor: pointer; transition: 0.2s; will-change: transform; flex-shrink: 0; white-space: nowrap; }
         .search-box button:hover { transform: scale(1.05); background: var(--primary-color); color: #fff; box-shadow: 0 4px 15px rgba(29, 185, 84, 0.4); }
 
         .search-dropdown { position: absolute; top: calc(100% + 5px); left: 0; width: 100%; background: rgba(20,20,20,0.98); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); z-index: 100; display: none; flex-direction: column; overflow: hidden; padding: 8px 0; }
@@ -360,6 +360,17 @@
            MOBILE OPTIMIZATION (NATIVE APP FEEL)
            ========================================= */
         @media (max-width: 768px) {
+            /* Hide ALL vertical/horizontal scrollbars for clean UI */
+            * {
+                -ms-overflow-style: none !important;
+                scrollbar-width: none !important;
+            }
+            *::-webkit-scrollbar {
+                display: none !important;
+                width: 0 !important;
+                height: 0 !important;
+            }
+
             .mobile-only { display: block !important; }
             .mobile-only-flex { display: flex !important; }
             .desktop-only-img { display: none !important; }
@@ -388,13 +399,24 @@
             .menu-divider.mobile-only-menu { display: block; }
             
             /* Main content padding fixed so last items are not hidden behind floating player */
-            .main-content { padding: 0 15px calc(140px + env(safe-area-inset-bottom)) 15px !important; }
+            .main-content { padding: 0 15px calc(90px + env(safe-area-inset-bottom)) 15px !important; }
             
-            /* Topbar Mobile Layout */
-            .topbar { padding: 15px 0; margin: 0 0 15px 0; }
+            /* Topbar Mobile Layout - Full width edge-to-edge */
+            .topbar { padding: 15px 15px !important; margin: 0 -15px 15px -15px !important; width: calc(100% + 30px) !important; }
             .user-profile { order: 2; margin-left: auto; }
             .search-container { order: 3; width: 100%; max-width: 100%; margin-top: 15px; }
-            .search-box input { font-size: 14px; padding: 12px 10px; }
+            .search-box { padding: 4px 4px 4px 15px; }
+            .search-box input { font-size: 14px; padding: 10px 8px; }
+            .search-box button { padding: 8px 16px; font-size: 13px; }
+
+            /* Horizontal scrolling lists break out of padding to touch edges completely */
+            .daily-mix-row, .results-row, .quick-picks-wrapper, .category-pills {
+                margin-left: -15px !important;
+                margin-right: -15px !important;
+                padding-left: 15px !important;
+                padding-right: 15px !important;
+                width: calc(100% + 30px) !important;
+            }
             
             /* Hide scroll buttons on mobile */
             .scroll-btn { display: none !important; }
@@ -422,17 +444,18 @@
             .song-list-row img { width: 40px; height: 40px; }
             .song-list-info h4 { font-size: 14px; }
             
-            /* NATIVE STYLE FLOATING BOTTOM PLAYER (MINI PLAYER) - IMPROVED FOR APK */
+            /* NATIVE STYLE BOTTOM PLAYER (MINI PLAYER) - FULL WIDTH EDGE-TO-EDGE */
             .bottom-player { 
-                height: 70px; 
-                padding: 0 15px; 
+                height: calc(65px + env(safe-area-inset-bottom)); 
+                padding: 0 15px env(safe-area-inset-bottom) 15px; 
                 justify-content: space-between; 
-                border-radius: 16px; 
-                bottom: calc(15px + env(safe-area-inset-bottom)); 
-                width: calc(100% - 30px); 
-                left: 15px; 
-                border: 1px solid rgba(255,255,255,0.1); 
-                box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+                border-radius: 0; 
+                bottom: 0; 
+                width: 100%; 
+                left: 0; 
+                border: none;
+                border-top: 1px solid rgba(255,255,255,0.1); 
+                box-shadow: 0 -10px 30px rgba(0,0,0,0.9) !important;
             }
             .now-playing { width: auto; flex: 1; min-width: 0; padding-right: 10px; }
             .now-playing img { width: 48px; height: 48px; border-radius: 8px; display: block !important;}
