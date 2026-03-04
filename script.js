@@ -1,4 +1,4 @@
-  // ==========================================
+// ==========================================
         // DEVICE INITIALIZATION & MEMORY STORAGE
         // ==========================================
         const DEVICE_INIT_KEY = 'proMusic_device_initialized_v2';
