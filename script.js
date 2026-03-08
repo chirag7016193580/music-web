@@ -1,4 +1,352 @@
 // ==========================================
+        // SMART PERFORMANCE ENGINE v2.0
+        // PC + Phone Smooth Experience Engine
+        // ==========================================
+        const SmartEngine = (() => {
+            // --- 1. DEVICE DETECTION ---
+            const ua = navigator.userAgent || '';
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+            const isIOS = /iPhone|iPad|iPod/i.test(ua);
+            const isAndroid = /Android/i.test(ua);
+            const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+            const screenW = window.screen?.width || window.innerWidth;
+            const screenH = window.screen?.height || window.innerHeight;
+            const deviceMemory = navigator.deviceMemory || 4; // GB
+            const hardwareConcurrency = navigator.hardwareConcurrency || 4;
+            const isLowEnd = (deviceMemory <= 2 || hardwareConcurrency <= 2);
+            const isMidRange = (deviceMemory <= 4 && hardwareConcurrency <= 4);
+
+            // --- 2. QUALITY TIER (auto-detected) ---
+            let qualityTier = 'high'; // high / medium / low
+            if (isMobile && isLowEnd) qualityTier = 'low';
+            else if (isMobile && isMidRange) qualityTier = 'medium';
+            else if (isMobile) qualityTier = 'medium';
+            // PC stays 'high'
+
+            const config = {
+                high:   { particles: 50, particleConnDist: 120, visualizerFPS: 60, imgQuality: '500x500', scrollDebounce: 16, saveInterval: 5000, cacheMax: 200, queueBatchSize: 100, animationsEnabled: true, blurEnabled: true },
+                medium: { particles: 25, particleConnDist: 80,  visualizerFPS: 30, imgQuality: '300x300', scrollDebounce: 32, saveInterval: 8000, cacheMax: 100, queueBatchSize: 50,  animationsEnabled: true, blurEnabled: true },
+                low:    { particles: 10, particleConnDist: 0,   visualizerFPS: 15, imgQuality: '150x150', scrollDebounce: 50, saveInterval: 15000, cacheMax: 50,  queueBatchSize: 30,  animationsEnabled: false, blurEnabled: false }
+            };
+
+            let settings = { ...config[qualityTier] };
+
+            // --- 3. NETWORK DETECTION ---
+            let connectionType = 'good'; // good / slow / offline
+            function detectNetwork() {
+                const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                if (!navigator.onLine) { connectionType = 'offline'; return; }
+                if (conn) {
+                    const ect = conn.effectiveType;
+                    if (ect === 'slow-2g' || ect === '2g') connectionType = 'slow';
+                    else if (ect === '3g') connectionType = 'slow';
+                    else connectionType = 'good';
+                    // Downlink-based detection
+                    if (conn.downlink && conn.downlink < 1) connectionType = 'slow';
+                } else {
+                    connectionType = 'good';
+                }
+                // On slow network, reduce image quality further
+                if (connectionType === 'slow' && qualityTier !== 'low') {
+                    settings.imgQuality = '150x150';
+                    settings.cacheMax = 50;
+                }
+            }
+            detectNetwork();
+            if (navigator.connection) {
+                navigator.connection.addEventListener('change', detectNetwork);
+            }
+            window.addEventListener('online', () => { connectionType = 'good'; detectNetwork(); });
+            window.addEventListener('offline', () => { connectionType = 'offline'; });
+
+            // --- 4. BATTERY DETECTION ---
+            let isLowBattery = false;
+            let isBatteryCharging = true;
+            async function detectBattery() {
+                try {
+                    if ('getBattery' in navigator) {
+                        const battery = await navigator.getBattery();
+                        const update = () => {
+                            isLowBattery = battery.level < 0.15 && !battery.charging;
+                            isBatteryCharging = battery.charging;
+                            if (isLowBattery) {
+                                // Aggressive power saving
+                                settings.particles = Math.min(settings.particles, 5);
+                                settings.visualizerFPS = Math.min(settings.visualizerFPS, 10);
+                                settings.particleConnDist = 0;
+                                settings.animationsEnabled = false;
+                            }
+                        };
+                        battery.addEventListener('levelchange', update);
+                        battery.addEventListener('chargingchange', update);
+                        update();
+                    }
+                } catch(e) {}
+            }
+            detectBattery();
+
+            // --- 5. THROTTLE & DEBOUNCE UTILITIES ---
+            function throttle(fn, limit) {
+                let last = 0, timer = null;
+                return function(...args) {
+                    const now = Date.now();
+                    const remaining = limit - (now - last);
+                    if (remaining <= 0) {
+                        if (timer) { clearTimeout(timer); timer = null; }
+                        last = now;
+                        fn.apply(this, args);
+                    } else if (!timer) {
+                        timer = setTimeout(() => {
+                            last = Date.now();
+                            timer = null;
+                            fn.apply(this, args);
+                        }, remaining);
+                    }
+                };
+            }
+
+            function debounce(fn, delay) {
+                let timer;
+                return function(...args) {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => fn.apply(this, args), delay);
+                };
+            }
+
+            // --- 6. SMART LOCALSTORAGE (Batched Writes) ---
+            const pendingWrites = new Map();
+            let writeTimer = null;
+
+            function batchedSetItem(key, val) {
+                pendingWrites.set(key, val);
+                if (!writeTimer) {
+                    writeTimer = setTimeout(flushWrites, settings.saveInterval);
+                }
+            }
+
+            function flushWrites() {
+                writeTimer = null;
+                pendingWrites.forEach((val, key) => {
+                    try { localStorage.setItem(key, String(val)); } catch(e) {}
+                });
+                pendingWrites.clear();
+            }
+
+            // Flush on page hide (critical for mobile)
+            function emergencyFlush() {
+                if (pendingWrites.size > 0) {
+                    pendingWrites.forEach((val, key) => {
+                        try { localStorage.setItem(key, String(val)); } catch(e) {}
+                    });
+                    pendingWrites.clear();
+                }
+                if (writeTimer) { clearTimeout(writeTimer); writeTimer = null; }
+            }
+            window.addEventListener('pagehide', emergencyFlush);
+            window.addEventListener('beforeunload', emergencyFlush);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') emergencyFlush();
+            });
+
+            // --- 7. LRU CACHE for API ---
+            class LRUCache {
+                constructor(maxSize) {
+                    this.maxSize = maxSize;
+                    this.cache = new Map();
+                }
+                has(key) { return this.cache.has(key); }
+                get(key) {
+                    if (!this.cache.has(key)) return undefined;
+                    const val = this.cache.get(key);
+                    // Move to end (most recently used)
+                    this.cache.delete(key);
+                    this.cache.set(key, val);
+                    return val;
+                }
+                set(key, val) {
+                    if (this.cache.has(key)) this.cache.delete(key);
+                    else if (this.cache.size >= this.maxSize) {
+                        // Evict oldest (first entry)
+                        const firstKey = this.cache.keys().next().value;
+                        this.cache.delete(firstKey);
+                    }
+                    this.cache.set(key, val);
+                }
+                clear() { this.cache.clear(); }
+                get size() { return this.cache.size; }
+            }
+
+            // --- 8. SMART IMAGE LOADER (IntersectionObserver) ---
+            let imageObserver = null;
+            function initImageObserver() {
+                if (!('IntersectionObserver' in window)) return;
+                imageObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            const dataSrc = img.getAttribute('data-src');
+                            if (dataSrc) {
+                                img.src = dataSrc;
+                                img.removeAttribute('data-src');
+                            }
+                            imageObserver.unobserve(img);
+                        }
+                    });
+                }, { rootMargin: '200px 0px', threshold: 0.01 });
+            }
+            initImageObserver();
+
+            function observeImage(img) {
+                if (imageObserver && img) imageObserver.observe(img);
+            }
+
+            function optimizeImageUrl(url) {
+                if (!url || url.includes('placeholder')) return url;
+                // Optimize based on quality tier
+                if (qualityTier === 'low') {
+                    return url.replace(/\d+x\d+bb/, '150x150bb').replace(/500x500/, '150x150').replace(/300x300/, '150x150');
+                } else if (qualityTier === 'medium') {
+                    return url.replace(/500x500/, '300x300');
+                }
+                return url;
+            }
+
+            // --- 9. FRAME BUDGET MANAGER ---
+            let lastFrameTime = 0;
+            let frameBudgetMs = 1000 / settings.visualizerFPS;
+            let isPageVisible = true;
+
+            document.addEventListener('visibilitychange', () => {
+                isPageVisible = document.visibilityState === 'visible';
+            });
+
+            function shouldRenderFrame(now) {
+                if (!isPageVisible) return false;
+                if (now - lastFrameTime < frameBudgetMs) return false;
+                lastFrameTime = now;
+                return true;
+            }
+
+            // --- 10. REQUESTIDLECALLBACK POLYFILL ---
+            const rIC = window.requestIdleCallback || function(cb) {
+                return setTimeout(() => {
+                    const start = Date.now();
+                    cb({ didTimeout: false, timeRemaining: () => Math.max(0, 50 - (Date.now() - start)) });
+                }, 1);
+            };
+
+            function scheduleIdle(fn) {
+                rIC(fn, { timeout: 2000 });
+            }
+
+            // --- 11. DOM RECYCLER for Queue Items ---
+            const domPool = {
+                _pool: [],
+                get(tag) {
+                    if (this._pool.length > 0) {
+                        const el = this._pool.pop();
+                        el.innerHTML = '';
+                        el.className = '';
+                        el.removeAttribute('style');
+                        el.onclick = null;
+                        return el;
+                    }
+                    return document.createElement(tag || 'div');
+                },
+                release(el) {
+                    if (el && this._pool.length < 200) {
+                        el.onclick = null;
+                        this._pool.push(el);
+                    }
+                }
+            };
+
+            // --- 12. SMOOTH SCROLL HELPER ---
+            const smoothScrollRow = throttle(function(container, direction) {
+                if (!container) return;
+                const scrollAmount = isMobile ? 250 : 350;
+                container.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+            }, settings.scrollDebounce);
+
+            // --- 13. PERFORMANCE MONITOR ---
+            let fps = 60, fpsFrames = 0, fpsLastCheck = performance.now();
+            function updateFPS() {
+                fpsFrames++;
+                const now = performance.now();
+                if (now - fpsLastCheck >= 1000) {
+                    fps = fpsFrames;
+                    fpsFrames = 0;
+                    fpsLastCheck = now;
+                    // Auto-downgrade if FPS is consistently low
+                    if (fps < 20 && qualityTier !== 'low') {
+                        qualityTier = 'low';
+                        Object.assign(settings, config['low']);
+                        frameBudgetMs = 1000 / settings.visualizerFPS;
+                        console.log('[SmartEngine] Auto-downgraded to LOW quality (FPS:', fps, ')');
+                    } else if (fps < 35 && qualityTier === 'high') {
+                        qualityTier = 'medium';
+                        Object.assign(settings, config['medium']);
+                        frameBudgetMs = 1000 / settings.visualizerFPS;
+                        console.log('[SmartEngine] Auto-downgraded to MEDIUM quality (FPS:', fps, ')');
+                    }
+                }
+            }
+
+            // --- 14. PREFETCH MANAGER ---
+            const prefetchedUrls = new Set();
+            function prefetchAudio(url) {
+                if (!url || prefetchedUrls.has(url) || connectionType === 'slow') return;
+                if (prefetchedUrls.size > 5) prefetchedUrls.clear(); // Limit prefetch count
+                try {
+                    const link = document.createElement('link');
+                    link.rel = 'prefetch';
+                    link.as = 'fetch';
+                    link.href = url;
+                    link.crossOrigin = 'anonymous';
+                    document.head.appendChild(link);
+                    prefetchedUrls.add(url);
+                } catch(e) {}
+            }
+
+            // --- 15. TOUCH OPTIMIZATION ---
+            // Passive event listeners for smooth scrolling on mobile
+            function addPassiveListener(el, event, handler) {
+                if (el) el.addEventListener(event, handler, { passive: true });
+            }
+
+            // --- PUBLIC API ---
+            console.log(`[SmartEngine v2.0] Device: ${isMobile ? 'Mobile' : 'PC'} | Quality: ${qualityTier.toUpperCase()} | RAM: ${deviceMemory}GB | Cores: ${hardwareConcurrency} | Network: ${connectionType}`);
+
+            return {
+                isMobile, isIOS, isAndroid, isSafari, isLowEnd, isMidRange,
+                qualityTier, settings, connectionType,
+                isLowBattery: () => isLowBattery,
+                isPageVisible: () => isPageVisible,
+                throttle, debounce,
+                batchedSetItem, flushWrites, emergencyFlush,
+                LRUCache,
+                observeImage, optimizeImageUrl, initImageObserver,
+                shouldRenderFrame, updateFPS,
+                rIC, scheduleIdle,
+                domPool,
+                smoothScrollRow,
+                prefetchAudio,
+                addPassiveListener,
+                getFPS: () => fps,
+                getConfig: () => settings,
+                // Allow manual quality override
+                setQuality(tier) {
+                    if (config[tier]) {
+                        qualityTier = tier;
+                        Object.assign(settings, config[tier]);
+                        frameBudgetMs = 1000 / settings.visualizerFPS;
+                        console.log(`[SmartEngine] Quality set to ${tier.toUpperCase()}`);
+                    }
+                }
+            };
+        })();
+
+        // ==========================================
         // DEVICE INITIALIZATION & MEMORY STORAGE
         // ==========================================
         const DEVICE_INIT_KEY = 'sangeet_device_initialized_v3';
@@ -82,8 +430,8 @@
         const immersivePlayer = document.getElementById('immersive-player');
         const mode4dBtn = document.getElementById('mode-4d-btn');
         
-        // ENGINE OPTIMIZATION: In-memory cache for API requests to eliminate redundant loading
-        const apiCache = new Map();
+        // ENGINE OPTIMIZATION: LRU cache for API requests (auto-evicts old entries on mobile)
+        const apiCache = new SmartEngine.LRUCache(SmartEngine.settings.cacheMax);
         
         let isShuffle = false;
         let repeatMode = 0; 
@@ -215,12 +563,11 @@
             overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
         }
 
-        // JS for Scroll Buttons
+        // JS for Scroll Buttons (SmartEngine optimized)
         function scrollRow(btnElement, direction) {
             const container = btnElement.parentElement.querySelector('.scrollable-row');
             if(container) {
-                const scrollAmount = 350; 
-                container.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+                SmartEngine.smoothScrollRow(container, direction);
             }
         }
 
@@ -248,7 +595,7 @@
             }
             playHistory[id].playCount += 1;
             playHistory[id].lastPlayed = Date.now();
-            memStorage.setItem('proMusicPlayHistory', JSON.stringify(playHistory));
+            SmartEngine.batchedSetItem('proMusicPlayHistory', JSON.stringify(playHistory));
 
             // Track listening time patterns
             const hour = new Date().getHours();
@@ -257,7 +604,7 @@
             else if (hour >= 17 && hour < 21) listeningTimePatterns.evening++;
             else if (hour >= 21 || hour < 2) listeningTimePatterns.night++;
             else listeningTimePatterns.latenight++;
-            memStorage.setItem('proMusicTimePatterns', JSON.stringify(listeningTimePatterns));
+            SmartEngine.batchedSetItem('proMusicTimePatterns', JSON.stringify(listeningTimePatterns));
 
             // Auto-analyze song features
             analyzeSongFeatures(song);
@@ -271,8 +618,8 @@
             if (!skipHistory[id]) skipHistory[id] = 0;
             skipHistory[id]++;
             if (playHistory[id]) playHistory[id].skipCount = (playHistory[id].skipCount || 0) + 1;
-            memStorage.setItem('proMusicSkipHistory', JSON.stringify(skipHistory));
-            memStorage.setItem('proMusicPlayHistory', JSON.stringify(playHistory));
+            SmartEngine.batchedSetItem('proMusicSkipHistory', JSON.stringify(skipHistory));
+            SmartEngine.batchedSetItem('proMusicPlayHistory', JSON.stringify(playHistory));
             updateTasteVector(song, 'skip');
         }
 
@@ -281,8 +628,8 @@
             if (!replayHistory[id]) replayHistory[id] = 0;
             replayHistory[id]++;
             if (playHistory[id]) playHistory[id].replayCount = (playHistory[id].replayCount || 0) + 1;
-            memStorage.setItem('proMusicReplayHistory', JSON.stringify(replayHistory));
-            memStorage.setItem('proMusicPlayHistory', JSON.stringify(playHistory));
+            SmartEngine.batchedSetItem('proMusicReplayHistory', JSON.stringify(replayHistory));
+            SmartEngine.batchedSetItem('proMusicPlayHistory', JSON.stringify(playHistory));
             updateTasteVector(song, 'replay');
         }
 
@@ -291,15 +638,15 @@
             if (!listenDuration[id]) listenDuration[id] = 0;
             listenDuration[id] += duration;
             if (playHistory[id]) playHistory[id].totalListenTime = (playHistory[id].totalListenTime || 0) + duration;
-            memStorage.setItem('proMusicListenDuration', JSON.stringify(listenDuration));
-            memStorage.setItem('proMusicPlayHistory', JSON.stringify(playHistory));
+            SmartEngine.batchedSetItem('proMusicListenDuration', JSON.stringify(listenDuration));
+            SmartEngine.batchedSetItem('proMusicPlayHistory', JSON.stringify(playHistory));
         }
 
         function trackPlaylistAddition(song, playlistName) {
             const id = song.title + "-" + song.artist;
             if (!playlistAdditions[id]) playlistAdditions[id] = [];
             if (!playlistAdditions[id].includes(playlistName)) playlistAdditions[id].push(playlistName);
-            memStorage.setItem('proMusicPlaylistAdditions', JSON.stringify(playlistAdditions));
+            SmartEngine.batchedSetItem('proMusicPlaylistAdditions', JSON.stringify(playlistAdditions));
             updateTasteVector(song, 'playlist_add');
         }
 
@@ -376,7 +723,7 @@
             };
 
             songFeatureCache[id] = features;
-            memStorage.setItem('proMusicSongFeatures', JSON.stringify(songFeatureCache));
+            SmartEngine.batchedSetItem('proMusicSongFeatures', JSON.stringify(songFeatureCache));
             return features;
         }
 
@@ -434,7 +781,7 @@
             };
 
             userTasteVector = tasteVector;
-            memStorage.setItem('proMusicTasteVector', JSON.stringify(tasteVector));
+            SmartEngine.batchedSetItem('proMusicTasteVector', JSON.stringify(tasteVector));
             return tasteVector;
         }
 
@@ -522,7 +869,7 @@
             ));
 
             userTasteVector.lastUpdated = Date.now();
-            memStorage.setItem('proMusicTasteVector', JSON.stringify(userTasteVector));
+            SmartEngine.batchedSetItem('proMusicTasteVector', JSON.stringify(userTasteVector));
         }
 
         // --- MODULE 4: COLLABORATIVE FILTERING ---
@@ -972,7 +1319,7 @@
                 topGenres,
                 topMoods
             });
-            memStorage.setItem('proMusicRecHistory', JSON.stringify(recommendationHistory.slice(-20)));
+            SmartEngine.batchedSetItem('proMusicRecHistory', JSON.stringify(recommendationHistory.slice(-20)));
 
             // Render the recommendation dashboard
             renderRecommendationDashboard(finalPlaylist, tasteVector, currentMood, profile);
@@ -1278,8 +1625,8 @@
             }
         });
 
-        // Save current state helper
-        function saveCurrentState() {
+        // Save current state helper (SmartEngine: throttled to avoid jank)
+        const _saveCurrentStateCore = function() {
             if (currentPlaylist.length > 0 && currentSongIndex >= 0 && !isNaN(audioEl.currentTime)) {
                 const state = {
                     playlist: currentPlaylist,
@@ -1287,16 +1634,126 @@
                     currentTime: audioEl.currentTime,
                     duration: audioEl.duration || 0
                 };
-                memStorage.setItem('proMusicLastState', JSON.stringify(state));
+                SmartEngine.batchedSetItem('proMusicLastState', JSON.stringify(state));
+            }
+        };
+        const saveCurrentState = SmartEngine.throttle(_saveCurrentStateCore, SmartEngine.settings.saveInterval);
+        // Emergency save (direct write for page close)
+        function saveCurrentStateImmediate() {
+            if (currentPlaylist.length > 0 && currentSongIndex >= 0 && !isNaN(audioEl.currentTime)) {
+                const state = {
+                    playlist: currentPlaylist,
+                    index: currentSongIndex,
+                    currentTime: audioEl.currentTime,
+                    duration: audioEl.duration || 0
+                };
+                try { localStorage.setItem('proMusicLastState', JSON.stringify(state)); } catch(e) {}
             }
         }
 
-        // Multiple event listeners to ensure state is saved heavily on mobile APKs
-        window.addEventListener('beforeunload', saveCurrentState);
-        window.addEventListener('pagehide', saveCurrentState);
+        // Multiple event listeners to ensure state is saved (SmartEngine: uses immediate save on exit)
+        window.addEventListener('beforeunload', saveCurrentStateImmediate);
+        window.addEventListener('pagehide', saveCurrentStateImmediate);
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') saveCurrentState();
+            if (document.visibilityState === 'hidden') saveCurrentStateImmediate();
         });
+
+        // --- BACK BUTTON HANDLER (Prevent app from closing while music plays) ---
+        // Push an initial state so we have history to go back to
+        if (!window.history.state || !window.history.state.sangeetApp) {
+            window.history.pushState({ sangeetApp: true, page: 'home' }, '');
+        }
+
+        window.addEventListener('popstate', function(e) {
+            // If music is currently playing, don't let the app close
+            if (audioEl && !audioEl.paused) {
+                // Re-push state to prevent going back further
+                window.history.pushState({ sangeetApp: true, page: 'playing' }, '');
+                
+                // Check if immersive player is open - close it first
+                const immersivePlayer = document.getElementById('immersive-player');
+                if (immersivePlayer && immersivePlayer.classList.contains('active')) {
+                    toggleImmersivePlayer();
+                    return;
+                }
+                
+                // Check if sidebar is open on mobile - close it
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar && sidebar.classList.contains('active')) {
+                    toggleMobileMenu();
+                    return;
+                }
+                
+                // Check if any modal is open - close it
+                const openModal = document.querySelector('.modal-overlay[style*="flex"]');
+                if (openModal) {
+                    openModal.style.display = 'none';
+                    return;
+                }
+                
+                // Check if queue panel is open - close it
+                const queuePanel = document.getElementById('queue-panel');
+                if (queuePanel && queuePanel.classList.contains('active')) {
+                    toggleQueue();
+                    return;
+                }
+                
+                // Music is playing but nothing to close - show mini toast
+                showToast('Music chal raha hai! Band karne ke liye pause karo');
+            } else {
+                // Music is not playing - allow normal back behavior
+                // But still push state so app doesn't close immediately
+                window.history.pushState({ sangeetApp: true, page: 'idle' }, '');
+                
+                // If we're on a sub-page, go back to home
+                const resultsDiv = document.getElementById('results');
+                if (resultsDiv && resultsDiv.innerHTML.trim() !== '' && !resultsDiv.innerHTML.includes('Welcome')) {
+                    loadHome();
+                    return;
+                }
+            }
+        });
+
+        // Keep audio alive when app goes to background (mobile minimize)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && audioEl && !audioEl.paused) {
+                // Update media session to keep notification visible
+                if ('mediaSession' in navigator && currentSongIndex >= 0 && currentPlaylist[currentSongIndex]) {
+                    navigator.mediaSession.playbackState = 'playing';
+                    updateMediaPositionState();
+                }
+            }
+            if (document.visibilityState === 'visible' && audioEl && !audioEl.paused) {
+                // Sync UI when coming back to foreground
+                playPauseBtn.innerHTML = "<i class='fas fa-pause'></i>";
+                if(document.getElementById('imm-play-pause-btn')) {
+                    document.getElementById('imm-play-pause-btn').innerHTML = "<i class='fas fa-pause'></i>";
+                }
+                updateMediaPositionState();
+            }
+        });
+
+        // Prevent app from being killed - use Wake Lock API if available
+        let wakeLock = null;
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        // Re-acquire if music is still playing
+                        if (audioEl && !audioEl.paused) {
+                            requestWakeLock();
+                        }
+                    });
+                }
+            } catch(e) { /* Wake Lock not supported or failed */ }
+        }
+        function releaseWakeLock() {
+            if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+            }
+        }
 
         // --- AUDIO URL EXTRACTOR ---
         function extractBestAudioUrl(track) {
@@ -2194,7 +2651,7 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             if(cleanQuery.length > 2 && !searchHistory.includes(cleanQuery)) {
                 searchHistory.unshift(cleanQuery); 
                 if(searchHistory.length > 8) searchHistory.pop(); 
-                memStorage.setItem('proMusicSearchHistory', JSON.stringify(searchHistory));
+                SmartEngine.batchedSetItem('proMusicSearchHistory', JSON.stringify(searchHistory));
             }
         }
 
@@ -2267,36 +2724,44 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             }
         }
 
-        // Live Audio Visualizer Drawing Loop
+        // Live Audio Visualizer Drawing Loop (SmartEngine: frame-budget aware)
+        let _vizFrameSkip = 0;
+        let _vizCanvas = null;
+        let _vizCtx = null;
+        const _vizFrameInterval = SmartEngine.qualityTier === 'high' ? 1 : (SmartEngine.qualityTier === 'medium' ? 2 : 4);
         function drawVisualizer() {
             visualizerAnimationId = requestAnimationFrame(drawVisualizer);
             
+            // SmartEngine: skip frames on lower quality tiers
+            _vizFrameSkip++;
+            if (_vizFrameSkip % _vizFrameInterval !== 0) return;
+            
             if(!analyser) return;
-            const canvas = document.getElementById('audio-visualizer');
-            if(!canvas) return;
-            const ctx = canvas.getContext('2d');
+            // SmartEngine: cache canvas ref
+            if(!_vizCanvas) _vizCanvas = document.getElementById('audio-visualizer');
+            if(!_vizCanvas) return;
+            if(!_vizCtx) _vizCtx = _vizCanvas.getContext('2d');
             
             // Match canvas internal resolution to display size
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
+            _vizCanvas.width = _vizCanvas.offsetWidth;
+            _vizCanvas.height = _vizCanvas.offsetHeight;
             
             analyser.getByteFrequencyData(visualizerDataArray);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            _vizCtx.clearRect(0, 0, _vizCanvas.width, _vizCanvas.height);
             
-            const barWidth = (canvas.width / visualizerBufferLength) * 2.5;
+            const barWidth = (_vizCanvas.width / visualizerBufferLength) * 2.5;
             let barHeight;
             let x = 0;
             
             for(let i = 0; i < visualizerBufferLength; i++) {
                 barHeight = visualizerDataArray[i];
                 
-                // Creating a sleek green-to-white gradient for the bars
                 let r = barHeight + (25 * (i/visualizerBufferLength));
                 let g = 255;
                 let b = 100;
                 
-                ctx.fillStyle = `rgb(${r},${g},${b})`;
-                ctx.fillRect(x, canvas.height - barHeight + 50, barWidth, barHeight);
+                _vizCtx.fillStyle = `rgb(${r},${g},${b})`;
+                _vizCtx.fillRect(x, _vizCanvas.height - barHeight + 50, barWidth, barHeight);
                 
                 x += barWidth + 1;
             }
@@ -2387,13 +2852,73 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: song.title,
                     artist: song.artist,
-                    album: 'Pro Music',
-                    artwork: [ { src: song.image, sizes: '300x300', type: 'image/jpeg' } ]
+                    album: 'Sangeet PRO',
+                    artwork: [
+                        { src: song.image, sizes: '96x96', type: 'image/jpeg' },
+                        { src: song.image, sizes: '128x128', type: 'image/jpeg' },
+                        { src: song.image, sizes: '192x192', type: 'image/jpeg' },
+                        { src: song.image, sizes: '256x256', type: 'image/jpeg' },
+                        { src: song.image, sizes: '384x384', type: 'image/jpeg' },
+                        { src: song.image, sizes: '512x512', type: 'image/jpeg' }
+                    ]
                 });
-                navigator.mediaSession.setActionHandler('play', togglePlay);
-                navigator.mediaSession.setActionHandler('pause', togglePlay);
+                navigator.mediaSession.setActionHandler('play', () => {
+                    audioEl.play();
+                    playPauseBtn.innerHTML = "<i class='fas fa-pause'></i>";
+                    if(document.getElementById('imm-play-pause-btn')) document.getElementById('imm-play-pause-btn').innerHTML = "<i class='fas fa-pause'></i>";
+                    navigator.mediaSession.playbackState = 'playing';
+                });
+                navigator.mediaSession.setActionHandler('pause', () => {
+                    audioEl.pause();
+                    playPauseBtn.innerHTML = "<i class='fas fa-play' style='margin-left: 3px;'></i>";
+                    if(document.getElementById('imm-play-pause-btn')) document.getElementById('imm-play-pause-btn').innerHTML = "<i class='fas fa-play' style='margin-left: 3px;'></i>";
+                    navigator.mediaSession.playbackState = 'paused';
+                });
                 navigator.mediaSession.setActionHandler('previoustrack', prevSong);
                 navigator.mediaSession.setActionHandler('nexttrack', nextSong);
+                try {
+                    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+                        const skipTime = details.seekOffset || 10;
+                        audioEl.currentTime = Math.max(audioEl.currentTime - skipTime, 0);
+                        updateMediaPositionState();
+                    });
+                    navigator.mediaSession.setActionHandler('seekforward', (details) => {
+                        const skipTime = details.seekOffset || 10;
+                        audioEl.currentTime = Math.min(audioEl.currentTime + skipTime, audioEl.duration);
+                        updateMediaPositionState();
+                    });
+                    navigator.mediaSession.setActionHandler('seekto', (details) => {
+                        if (details.fastSeek && 'fastSeek' in audioEl) {
+                            audioEl.fastSeek(details.seekTime);
+                        } else {
+                            audioEl.currentTime = details.seekTime;
+                        }
+                        updateMediaPositionState();
+                    });
+                    navigator.mediaSession.setActionHandler('stop', () => {
+                        audioEl.pause();
+                        audioEl.currentTime = 0;
+                        playPauseBtn.innerHTML = "<i class='fas fa-play' style='margin-left: 3px;'></i>";
+                        if(document.getElementById('imm-play-pause-btn')) document.getElementById('imm-play-pause-btn').innerHTML = "<i class='fas fa-play' style='margin-left: 3px;'></i>";
+                        navigator.mediaSession.playbackState = 'none';
+                    });
+                } catch(e) { /* Some handlers not supported on all browsers */ }
+                navigator.mediaSession.playbackState = 'playing';
+            }
+        }
+
+        // Update media notification progress bar / position
+        function updateMediaPositionState() {
+            if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+                try {
+                    if (audioEl.duration && isFinite(audioEl.duration) && audioEl.duration > 0) {
+                        navigator.mediaSession.setPositionState({
+                            duration: audioEl.duration,
+                            playbackRate: audioEl.playbackRate,
+                            position: Math.min(audioEl.currentTime, audioEl.duration)
+                        });
+                    }
+                } catch(e) { /* Ignore position state errors */ }
             }
         }
 
@@ -2510,7 +3035,7 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             if(document.getElementById('imm-play-pause-btn')) document.getElementById('imm-play-pause-btn').innerHTML = "<i class='fas fa-pause'></i>";
             
             const state = { playlist: currentPlaylist, index: currentSongIndex, currentTime: 0 };
-            memStorage.setItem('proMusicLastState', JSON.stringify(state));
+            SmartEngine.batchedSetItem('proMusicLastState', JSON.stringify(state));
 
             if (!isQueueOpen && window.innerWidth > 900) toggleQueue();
             updateQueueUI(); 
@@ -2518,8 +3043,22 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             if(immersivePlayer.classList.contains('open')) updateImmersivePanel();
             
             updateMediaSession(song);
+            requestWakeLock();
+            // Update position state when audio metadata loads
+            audioEl.addEventListener('loadedmetadata', () => { updateMediaPositionState(); }, { once: true });
+            // Periodically update position for notification seekbar
+            audioEl.addEventListener('timeupdate', updateMediaPositionState);
             updateSidebarMiniPlayer();
             updateLikedBadge();
+            
+            // SmartEngine: Prefetch next song audio for gapless playback
+            if (currentPlaylist.length > 1) {
+                const nextIdx = (index + 1) % currentPlaylist.length;
+                const nextSong = currentPlaylist[nextIdx];
+                if (nextSong && nextSong.audioUrl) {
+                    SmartEngine.prefetchAudio(nextSong.audioUrl);
+                }
+            }
         }
 
         function highlightVerticalListSong(index) {
@@ -2552,14 +3091,18 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
                 audioEl.play();
                 playPauseBtn.innerHTML = "<i class='fas fa-pause'></i>";
                 if(document.getElementById('imm-play-pause-btn')) document.getElementById('imm-play-pause-btn').innerHTML = "<i class='fas fa-pause'></i>";
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+                requestWakeLock();
             } else {
                 audioEl.pause();
                 playPauseBtn.innerHTML = "<i class='fas fa-play' style='margin-left: 3px;'></i>";
                 if(document.getElementById('imm-play-pause-btn')) document.getElementById('imm-play-pause-btn').innerHTML = "<i class='fas fa-play' style='margin-left: 3px;'></i>";
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+                releaseWakeLock();
             }
             
             if (currentPlaylist.length > 0 && currentSongIndex >= 0) {
-                memStorage.setItem('proMusicLastState', JSON.stringify({
+                SmartEngine.batchedSetItem('proMusicLastState', JSON.stringify({
                     playlist: currentPlaylist,
                     index: currentSongIndex,
                     currentTime: audioEl.currentTime
@@ -2702,7 +3245,7 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
                 // Feedback Loop: like signal strengthens taste vector
                 updateTasteVector(currentSong, 'like');
             }
-            memStorage.setItem('proMusicLikedSongs', JSON.stringify(likedSongs));
+            SmartEngine.batchedSetItem('proMusicLikedSongs', JSON.stringify(likedSongs));
             updateLikedBadge();
             highlightVerticalListSong(currentSongIndex); 
             
@@ -2858,7 +3401,7 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
                 a.click();
                 document.body.removeChild(a);
             }
-            memStorage.setItem('proMusicDownloadedSongs', JSON.stringify(downloadedSongs));
+            SmartEngine.batchedSetItem('proMusicDownloadedSongs', JSON.stringify(downloadedSongs));
             
             // Auto update library page if it's currently open
             if(document.getElementById('page-title') && document.getElementById('page-title').innerText === "Library 📚" || document.getElementById('results').innerHTML.includes("Library 📚")) {
@@ -2921,7 +3464,7 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             if(userPlaylists[name]) { showToast("Ye playlist pehle se hai!"); return; }
             
             userPlaylists[name] = [];
-            memStorage.setItem('proMusicUserPlaylists', JSON.stringify(userPlaylists));
+            SmartEngine.batchedSetItem('proMusicUserPlaylists', JSON.stringify(userPlaylists));
             closeCreatePlaylistModal();
             showToast(`'${name}' playlist ban gayi! 🎉`);
             
@@ -2965,7 +3508,7 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
                 showToast("Gana pehle se playlist mein hai!");
             } else {
                 userPlaylists[playlistName].push(song);
-                memStorage.setItem('proMusicUserPlaylists', JSON.stringify(userPlaylists));
+                SmartEngine.batchedSetItem('proMusicUserPlaylists', JSON.stringify(userPlaylists));
                 showToast(`Gana '${playlistName}' mein jod diya gaya!`);
                 // Feedback Loop: playlist addition signal
                 trackPlaylistAddition(song, playlistName);
@@ -2986,6 +3529,7 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             }
         }
 
+        // SmartEngine: Optimized queue rendering with DocumentFragment (batch DOM)
         function updateQueueUI() {
             queueList.innerHTML = "";
             const immersiveQueueList = document.getElementById('immersive-queue-list');
@@ -2996,32 +3540,42 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
                 if(immersiveQueueList) immersiveQueueList.innerHTML = "<p style='color:gray; font-size:14px;'>Queue is empty.</p>";
                 return;
             }
+            // SmartEngine: Use DocumentFragment for batch DOM insertion (avoids reflow per item)
+            const frag = document.createDocumentFragment();
+            const immFrag = immersiveQueueList ? document.createDocumentFragment() : null;
+            
             currentPlaylist.forEach((song, index) => {
                 let div = document.createElement('div');
                 div.className = `queue-item ${index === currentSongIndex ? 'active-queue' : ''}`;
                 div.onclick = () => { playSongByIndex(index); };
                 
+                // SmartEngine: optimize image URL based on quality tier
+                const imgUrl = SmartEngine.optimizeImageUrl(song.image);
                 div.innerHTML = `
-                    <img src="${song.image}" loading="lazy" onerror="this.src='https://via.placeholder.com/40'">
+                    <img src="${imgUrl}" loading="lazy" onerror="this.src='https://via.placeholder.com/40'">
                     <div class="queue-item-info">
                         <h4 style="color: ${index === currentSongIndex ? 'var(--primary-color)' : '#fff'}">${song.title}</h4>
                         <p>${song.artist}</p>
                     </div>
                     ${index === currentSongIndex ? '<i class="fas fa-volume-up" style="margin-left:auto; color: var(--primary-color); font-size: 14px;"></i>' : ''}
                 `;
-                queueList.appendChild(div);
+                frag.appendChild(div);
 
-                // Immersive kyu (Right side PC view)
-                if(immersiveQueueList) {
+                // Immersive queue (Right side PC view)
+                if(immFrag) {
                     let imDiv = document.createElement('div');
                     imDiv.className = `queue-item ${index === currentSongIndex ? 'active-queue' : ''}`;
                     imDiv.style.background = index === currentSongIndex ? 'rgba(29, 185, 84, 0.2)' : 'transparent';
                     imDiv.onclick = () => { playSongByIndex(index); };
                     imDiv.innerHTML = div.innerHTML;
-                    immersiveQueueList.appendChild(imDiv);
+                    immFrag.appendChild(imDiv);
                 }
             });
-            const activeQueueItem = document.querySelector('.active-queue');
+            // SmartEngine: Single DOM write instead of N writes
+            queueList.appendChild(frag);
+            if(immersiveQueueList && immFrag) immersiveQueueList.appendChild(immFrag);
+            
+            const activeQueueItem = queueList.querySelector('.active-queue');
             if(activeQueueItem) activeQueueItem.scrollIntoView({ behavior: "smooth", block: "center" });
 
             const activeImmersiveQueueItem = immersiveQueueList?.querySelector('.active-queue');
@@ -3059,8 +3613,36 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             }
         }
 
+        // SmartEngine: Cache DOM refs for timeupdate to avoid repeated lookups
+        let _cachedImmProgressBar = null;
+        let _cachedImmFill = null;
+        let _cachedImmThumb = null;
+        let _cachedImmCurTime = null;
+        let _cachedImmTotalTime = null;
+        let _cachedCurTime = null;
+        let _cachedTotalTime = null;
+        let _timeupdateDomCached = false;
+        function _cacheTimeupdateDom() {
+            _cachedCurTime = document.getElementById('current-time');
+            _cachedTotalTime = document.getElementById('total-time');
+            _cachedImmProgressBar = document.getElementById('imm-progress-bar');
+            _cachedImmFill = document.getElementById('imm-progress-fill');
+            _cachedImmThumb = document.getElementById('imm-progress-thumb');
+            _cachedImmCurTime = document.getElementById('imm-current-time');
+            _cachedImmTotalTime = document.getElementById('imm-total-time');
+            _timeupdateDomCached = true;
+        }
+
+        // SmartEngine: Throttled timeupdate (avoids layout thrashing on every frame)
+        let _lastTimeUpdateSec = -1;
         audioEl.addEventListener('timeupdate', () => {
             if(isNaN(audioEl.duration)) return;
+            if(!_timeupdateDomCached) _cacheTimeupdateDom();
+            
+            const curSec = Math.floor(audioEl.currentTime);
+            // Only update DOM once per second (huge perf win on mobile)
+            if (curSec === _lastTimeUpdateSec) return;
+            _lastTimeUpdateSec = curSec;
             
             const percent = (audioEl.currentTime / audioEl.duration) * 100;
             
@@ -3068,24 +3650,20 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             progressBar.value = percent;
             progressFill.style.width = `${percent}%`;
             progressThumb.style.left = `${percent}%`;
-            document.getElementById('current-time').innerText = formatTime(audioEl.currentTime);
-            document.getElementById('total-time').innerText = formatTime(audioEl.duration);
+            if(_cachedCurTime) _cachedCurTime.innerText = formatTime(audioEl.currentTime);
+            if(_cachedTotalTime) _cachedTotalTime.innerText = formatTime(audioEl.duration);
 
             // Mobile Immersive Progress Bar Sync
-            const immProgressBar = document.getElementById('imm-progress-bar');
-            if(immProgressBar) {
-                immProgressBar.value = percent;
-                document.getElementById('imm-progress-fill').style.width = `${percent}%`;
-                document.getElementById('imm-progress-thumb').style.left = `${percent}%`;
-                document.getElementById('imm-current-time').innerText = formatTime(audioEl.currentTime);
-                document.getElementById('imm-total-time').innerText = formatTime(audioEl.duration);
+            if(_cachedImmProgressBar) {
+                _cachedImmProgressBar.value = percent;
+                if(_cachedImmFill) _cachedImmFill.style.width = `${percent}%`;
+                if(_cachedImmThumb) _cachedImmThumb.style.left = `${percent}%`;
+                if(_cachedImmCurTime) _cachedImmCurTime.innerText = formatTime(audioEl.currentTime);
+                if(_cachedImmTotalTime) _cachedImmTotalTime.innerText = formatTime(audioEl.duration);
             }
 
-            // --- Frequent Save for Accurate Resume ---
-            // Ab har 1 second mein exact position save hogi taaki app crash/close hone par bhi wahi se start ho
-            if (Math.floor(audioEl.currentTime) % 1 === 0 && currentPlaylist.length > 0) {
-                saveCurrentState();
-            }
+            // SmartEngine: Throttled save (already throttled via saveCurrentState)
+            saveCurrentState();
         });
 
         // --- MOBILE SWIPE GESTURES ---
@@ -3412,7 +3990,7 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             const currentName = memStorage.getItem('proMusicUserName') || 'Music Lover';
             const newName = prompt('Enter your name:', currentName);
             if (newName && newName.trim()) {
-                memStorage.setItem('proMusicUserName', newName.trim());
+                SmartEngine.batchedSetItem('proMusicUserName', newName.trim());
                 const modalName = document.getElementById('modal-profile-name');
                 const profileName = document.getElementById('profile-name');
                 if (modalName) modalName.innerText = newName.trim();
@@ -3422,20 +4000,27 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
         }
 
         // ==========================================
-        // PARTICLES BACKGROUND SYSTEM
+        // PARTICLES BACKGROUND SYSTEM (SmartEngine: adaptive particle count & FPS)
         // ==========================================
         function initParticles() {
             const canvas = document.getElementById('particles-canvas');
             if (!canvas) return;
+            // SmartEngine: Skip particles entirely on low-end devices with animations disabled
+            if (!SmartEngine.settings.animationsEnabled) {
+                canvas.style.display = 'none';
+                return;
+            }
             const ctx = canvas.getContext('2d');
             let particles = [];
-            const maxParticles = 50;
+            const maxParticles = SmartEngine.settings.particles; // SmartEngine: adaptive count
+            const connDist = SmartEngine.settings.particleConnDist; // SmartEngine: 0 on low = no connections
 
-            function resize() {
+            const resize = SmartEngine.throttle(() => {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
-            }
-            resize();
+            }, 250);
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
             window.addEventListener('resize', resize);
 
             function createParticle() {
@@ -3453,8 +4038,15 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
                 particles.push(createParticle());
             }
 
+            // SmartEngine: frame-budget-aware animation loop
+            let _particleFrameSkip = 0;
+            const _particleFrameInterval = SmartEngine.qualityTier === 'high' ? 1 : (SmartEngine.qualityTier === 'medium' ? 2 : 4);
             function animate() {
                 requestAnimationFrame(animate);
+                // SmartEngine: skip frames on lower tiers to save CPU
+                _particleFrameSkip++;
+                if (_particleFrameSkip % _particleFrameInterval !== 0) return;
+                
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                 particles.forEach(p => {
@@ -3470,19 +4062,21 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
                     ctx.fill();
                 });
 
-                // Draw connections between nearby particles
-                for (let i = 0; i < particles.length; i++) {
-                    for (let j = i + 1; j < particles.length; j++) {
-                        const dx = particles[i].x - particles[j].x;
-                        const dy = particles[i].y - particles[j].y;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist < 120) {
-                            ctx.beginPath();
-                            ctx.moveTo(particles[i].x, particles[i].y);
-                            ctx.lineTo(particles[j].x, particles[j].y);
-                            ctx.strokeStyle = `rgba(29, 185, 84, ${0.08 * (1 - dist / 120)})`;
-                            ctx.lineWidth = 0.5;
-                            ctx.stroke();
+                // SmartEngine: Skip connections entirely when connDist is 0 (low tier)
+                if (connDist > 0) {
+                    for (let i = 0; i < particles.length; i++) {
+                        for (let j = i + 1; j < particles.length; j++) {
+                            const dx = particles[i].x - particles[j].x;
+                            const dy = particles[i].y - particles[j].y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < connDist) {
+                                ctx.beginPath();
+                                ctx.moveTo(particles[i].x, particles[i].y);
+                                ctx.lineTo(particles[j].x, particles[j].y);
+                                ctx.strokeStyle = `rgba(29, 185, 84, ${0.08 * (1 - dist / connDist)})`;
+                                ctx.lineWidth = 0.5;
+                                ctx.stroke();
+                            }
                         }
                     }
                 }
@@ -3517,6 +4111,28 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
 
         // Initialize on DOMContentLoaded
         document.addEventListener('DOMContentLoaded', () => {
+            // SmartEngine: Initialize lazy image observer
+            SmartEngine.initImageObserver();
+            
+            // SmartEngine: Start FPS monitoring (auto-downgrades quality if <20 FPS)
+            setInterval(SmartEngine.updateFPS, 2000);
+            
+            // SmartEngine: Flush batched writes on page hide (critical for mobile)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') SmartEngine.emergencyFlush();
+            });
+            window.addEventListener('pagehide', SmartEngine.emergencyFlush);
+            
+            // SmartEngine: Passive touch listeners for smooth mobile scrolling
+            const scrollContainers = document.querySelectorAll('.scrollable-row, .queue-list, #results');
+            scrollContainers.forEach(el => {
+                SmartEngine.addPassiveListener(el, 'touchstart', () => {});
+                SmartEngine.addPassiveListener(el, 'touchmove', () => {});
+            });
+            
+            // SmartEngine: Log quality tier for debugging
+            console.log(`[SmartEngine] Quality: ${SmartEngine.qualityTier} | Mobile: ${SmartEngine.isMobile} | RAM: ${SmartEngine.deviceMemory}GB | Cores: ${SmartEngine.hardwareConcurrency}`);
+            
             initParticles();
             updateLikedBadge();
             
