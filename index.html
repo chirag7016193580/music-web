@@ -7,10 +7,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Sangeet - Premium Music Experience</title>
-    
+
     <!-- PWA Manifest -->
     <link rel="manifest" id="manifest-placeholder">
-    
+
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -22,7 +22,10 @@
     <!-- Mobile Overlay for Sidebar -->
     <div id="mobile-overlay" onclick="toggleMobileMenu()"></div>
 
-    <!-- Sidebar Section -->
+    <!-- Hidden file input for profile photo upload -->
+    <input type="file" id="profile-photo-input" accept="image/*" hidden>
+
+    <!-- ========== SIDEBAR ========== -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-logo">
             <div class="logo-icon"><i class="fas fa-music"></i></div>
@@ -46,14 +49,14 @@
             </div>
 
             <div class="menu-divider"></div>
-            
+
             <div class="nav-section">
                 <p class="nav-label">Your Collection</p>
                 <div class="menu-item" onclick="showCreatePlaylistModal(); toggleMobileMenu();">
                     <i class="fas fa-plus-square"></i> <span>Create Playlist</span>
                 </div>
                 <div class="menu-item" onclick="showLikedSongs(); setActive(this); toggleMobileMenu();">
-                    <i class="fas fa-heart" style="color:#ff6b6b;"></i> <span>Liked Songs</span>
+                    <i class="fas fa-heart liked-heart-icon"></i> <span>Liked Songs</span>
                     <span class="badge" id="liked-count-badge">0</span>
                 </div>
             </div>
@@ -71,9 +74,9 @@
             </div>
 
             <div class="menu-divider"></div>
-            
+
             <div class="nav-section">
-                <p class="nav-label">AI & Smart Features</p>
+                <p class="nav-label">AI &amp; Smart Features</p>
                 <div class="menu-item rec-menu-item" onclick="generateSmartRecommendations(); setActive(this); toggleMobileMenu();">
                     <i class="fas fa-brain"></i>
                     <span class="rec-text-gradient">Smart Recs</span>
@@ -90,12 +93,12 @@
             </div>
 
             <div class="menu-divider"></div>
-            
+
             <div class="nav-section">
                 <p class="nav-label">Settings</p>
                 <div class="menu-item" onclick="showSleepTimerModal(); toggleMobileMenu();">
                     <i class="fas fa-moon"></i> <span>Sleep Timer</span>
-                    <span class="badge sleep-badge" id="sleep-timer-badge" style="display:none;">ON</span>
+                    <span class="badge sleep-badge" id="sleep-timer-badge">ON</span>
                 </div>
                 <div class="menu-item" onclick="showEqualizer(); toggleMobileMenu();">
                     <i class="fas fa-sliders-h"></i> <span>Equalizer</span>
@@ -110,7 +113,7 @@
         </nav>
 
         <div class="sidebar-footer">
-            <div class="sidebar-now-playing" id="sidebar-mini-player" style="display:none;">
+            <div class="sidebar-now-playing" id="sidebar-mini-player">
                 <img id="sidebar-np-img" src="" alt="">
                 <div class="sidebar-np-info">
                     <span id="sidebar-np-title">Not Playing</span>
@@ -125,7 +128,7 @@
         </div>
     </div>
 
-    <!-- Main Content Area -->
+    <!-- ========== MAIN CONTENT ========== -->
     <div class="main-content" id="main-content">
         <div class="bg-blur" id="bg-blur"></div>
 
@@ -144,7 +147,7 @@
             <div class="search-container">
                 <div class="search-box">
                     <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="songInput" placeholder="What do you want to listen to?" onkeypress="handleKeyPress(event)" onfocus="handleSearchInput()" onblur="hideSearchHistory()" oninput="handleSearchInput()" autocomplete="off">
+                    <input type="text" id="songInput" placeholder="What do you want to listen to?" autocomplete="off">
                     <button class="search-btn" onclick="searchMusic()"><i class="fas fa-arrow-right"></i></button>
                 </div>
                 <div id="search-history-dropdown" class="search-dropdown"></div>
@@ -154,7 +157,9 @@
         <!-- Category Pills -->
         <div class="category-pills" id="category-pills"></div>
 
-        <h1 id="page-title" style="display: none;">Welcome</h1>
+        <h1 id="page-title" class="hidden-title">Welcome</h1>
+
+        <!-- ===== MODALS ===== -->
 
         <!-- PWA Install Modal -->
         <div class="modal-overlay" id="install-modal">
@@ -189,7 +194,7 @@
                 <h3>Add to Playlist</h3>
                 <div class="playlist-select-list" id="playlist-options"></div>
                 <div class="modal-btns">
-                    <button class="btn-secondary" onclick="closeAddToPlaylistModal()" style="width:100%;">Cancel</button>
+                    <button class="btn-secondary modal-full-btn" onclick="closeAddToPlaylistModal()">Cancel</button>
                 </div>
             </div>
         </div>
@@ -221,15 +226,15 @@
                     <div class="sleep-option" onclick="setSleepTimer(45)">45 min</div>
                     <div class="sleep-option" onclick="setSleepTimer(60)">1 hour</div>
                 </div>
-                <div class="sleep-timer-active" id="sleep-timer-active" style="display:none;">
+                <div class="sleep-timer-active" id="sleep-timer-active">
                     <div class="sleep-countdown">
                         <i class="fas fa-clock"></i>
                         <span id="sleep-countdown-text">--:--</span>
                     </div>
-                    <button class="btn-danger" onclick="cancelSleepTimer()" style="width:100%;margin-top:15px;">Cancel Timer</button>
+                    <button class="btn-danger modal-full-btn sleep-cancel-btn" onclick="cancelSleepTimer()">Cancel Timer</button>
                 </div>
-                <div class="modal-btns" style="margin-top:15px;">
-                    <button class="btn-secondary" onclick="closeSleepTimerModal()" style="width:100%;">Close</button>
+                <div class="modal-btns sleep-close-btns">
+                    <button class="btn-secondary modal-full-btn" onclick="closeSleepTimerModal()">Close</button>
                 </div>
             </div>
         </div>
@@ -279,8 +284,8 @@
                         </label>
                     </div>
                 </div>
-                <div class="modal-btns" style="margin-top:15px;">
-                    <button class="btn-secondary" onclick="closeEqualizerModal()" style="width:100%;">Done</button>
+                <div class="modal-btns eq-close-btns">
+                    <button class="btn-secondary modal-full-btn" onclick="closeEqualizerModal()">Done</button>
                 </div>
             </div>
         </div>
@@ -303,8 +308,8 @@
                     <div class="shortcut-row"><kbd>L</kbd><span>Like / Unlike Song</span></div>
                     <div class="shortcut-row"><kbd>Q</kbd><span>Toggle Queue</span></div>
                 </div>
-                <div class="modal-btns" style="margin-top:15px;">
-                    <button class="btn-secondary" onclick="closeShortcutsModal()" style="width:100%;">Close</button>
+                <div class="modal-btns shortcuts-close-btns">
+                    <button class="btn-secondary modal-full-btn" onclick="closeShortcutsModal()">Close</button>
                 </div>
             </div>
         </div>
@@ -317,10 +322,11 @@
                 </div>
                 <div class="profile-avatar-wrap">
                     <img id="modal-profile-img" src="" alt="Profile">
-                    <button class="profile-edit-btn" onclick="editProfileName()"><i class="fas fa-pen"></i></button>
+                    <button class="profile-edit-btn" id="profile-upload-btn" title="Upload Photo"><i class="fas fa-camera"></i></button>
                 </div>
                 <div class="profile-details">
                     <h2 id="modal-profile-name">Music Lover</h2>
+                    <button class="profile-name-edit-btn" onclick="editProfileName()"><i class="fas fa-pen"></i> Edit Name</button>
                     <div class="pro-badge"><i class="fas fa-crown"></i> Premium Member</div>
                     <div class="profile-stats">
                         <div class="stat-card">
@@ -354,8 +360,8 @@
                     <button class="share-btn twitter" onclick="shareSong('twitter')"><i class="fab fa-twitter"></i> Twitter</button>
                     <button class="share-btn copy" onclick="shareSong('copy')"><i class="fas fa-link"></i> Copy Link</button>
                 </div>
-                <div class="modal-btns" style="margin-top:15px;">
-                    <button class="btn-secondary" onclick="closeShareModal()" style="width:100%;">Close</button>
+                <div class="modal-btns share-close-btns">
+                    <button class="btn-secondary modal-full-btn" onclick="closeShareModal()">Close</button>
                 </div>
             </div>
         </div>
@@ -364,7 +370,7 @@
         <div id="results"></div>
     </div>
 
-    <!-- Right Queue Panel -->
+    <!-- ========== QUEUE PANEL ========== -->
     <div class="queue-panel" id="queue-panel">
         <div class="queue-header">
             <h2><i class="fas fa-stream"></i> Queue</h2>
@@ -374,11 +380,11 @@
         <div id="queue-list"></div>
     </div>
 
-    <!-- Full Screen Immersive Player (PC & Mobile) -->
+    <!-- ========== IMMERSIVE PLAYER ========== -->
     <div class="immersive-player" id="immersive-player">
         <div class="immersive-left">
             <div class="immersive-bg" id="immersive-bg"></div>
-            
+
             <!-- Live Audio Visualizer -->
             <canvas id="audio-visualizer" class="visualizer-canvas"></canvas>
 
@@ -388,12 +394,12 @@
                     <span class="imm-brand">Sangeet <span class="live-badge"><div class="live-dot"></div> LIVE</span></span>
                     <button class="immersive-share-btn" onclick="showShareModal()"><i class="fas fa-share-alt"></i></button>
                 </div>
-                
+
                 <!-- Mobile Big Artwork -->
                 <div class="immersive-mobile-art mobile-only">
                     <img id="imm-mobile-img" src="https://via.placeholder.com/300" alt="Album Art">
                 </div>
-                
+
                 <div class="immersive-bottom-section">
                     <div class="immersive-song-info">
                         <img id="immersive-img" class="desktop-only-img" src="https://via.placeholder.com/80" alt="Album Art">
@@ -407,7 +413,7 @@
                             <button class="action-btn" id="imm-download-btn" onclick="toggleDownload(event)" title="Download"><i class="fas fa-download"></i></button>
                         </div>
                     </div>
-                    
+
                     <!-- Mobile Controls -->
                     <div class="immersive-controls mobile-only-flex">
                         <div class="imm-progress-area">
@@ -421,11 +427,11 @@
                                 <span id="imm-total-time">0:00</span>
                             </div>
                         </div>
-                        
+
                         <div class="imm-control-btns">
                             <button class="ctrl-icon" id="imm-shuffle-btn" onclick="toggleShuffle()"><i class="fas fa-shuffle"></i></button>
                             <button class="ctrl-icon" onclick="prevSong()"><i class="fas fa-backward-step"></i></button>
-                            <button class="imm-play-btn" id="imm-play-pause-btn" onclick="togglePlay()"><i class="fas fa-play" style="margin-left:4px;"></i></button>
+                            <button class="imm-play-btn" id="imm-play-pause-btn" onclick="togglePlay()"><i class="fas fa-play imm-play-icon"></i></button>
                             <button class="ctrl-icon" onclick="nextSong()"><i class="fas fa-forward-step"></i></button>
                             <button class="ctrl-icon" id="imm-repeat-btn" onclick="toggleRepeat()"><i class="fas fa-repeat"></i></button>
                         </div>
@@ -440,7 +446,7 @@
         </div>
     </div>
 
-    <!-- Bottom Player -->
+    <!-- ========== BOTTOM PLAYER ========== -->
     <div class="bottom-player" id="bottom-player-area">
         <div class="now-playing" title="Open Full Screen" onclick="toggleImmersivePlayer();">
             <img id="np-img" src="" alt="Album Art">
@@ -449,17 +455,17 @@
                 <p id="np-artist">-</p>
             </div>
             <div class="np-actions">
-                <button class="action-btn" id="add-pl-btn" onclick="showAddToPlaylistModal(event); event.stopPropagation();" title="Add to Playlist" style="display:none;"><i class="fas fa-plus-circle"></i></button>
+                <button class="action-btn" id="add-pl-btn" onclick="showAddToPlaylistModal(event); event.stopPropagation();" title="Add to Playlist"><i class="fas fa-plus-circle"></i></button>
                 <button class="like-btn" id="like-btn" onclick="toggleLike(event); event.stopPropagation();"><i class="fas fa-heart"></i></button>
                 <button class="download-btn" id="download-btn" onclick="toggleDownload(event); event.stopPropagation();" title="Download"><i class="fas fa-download"></i></button>
             </div>
         </div>
-        
+
         <div class="player-controls">
             <div class="control-btns">
                 <button class="ctrl-icon" id="shuffle-btn" onclick="toggleShuffle()" title="Shuffle"><i class="fas fa-shuffle"></i></button>
                 <button class="ctrl-icon" onclick="prevSong()" title="Previous"><i class="fas fa-backward-step"></i></button>
-                <button class="main-play-btn" id="play-pause-btn" onclick="togglePlay()"><i class="fas fa-play" style="margin-left: 3px;"></i></button>
+                <button class="main-play-btn" id="play-pause-btn" onclick="togglePlay()"><i class="fas fa-play play-icon"></i></button>
                 <button class="ctrl-icon" onclick="nextSong()" title="Next"><i class="fas fa-forward-step"></i></button>
                 <button class="ctrl-icon" id="repeat-btn" onclick="toggleRepeat()" title="Repeat"><i class="fas fa-repeat"></i></button>
             </div>
@@ -481,11 +487,11 @@
             <button class="action-btn" id="mode-4d-btn" onclick="toggle4DMode()" title="3D Surround"><i class="fas fa-cube"></i></button>
             <button class="action-btn" id="immersive-btn" onclick="toggleImmersivePlayer()" title="Now Playing"><i class="fas fa-expand"></i></button>
             <button class="action-btn" id="queue-btn" onclick="toggleQueue()" title="Queue"><i class="fas fa-stream"></i></button>
-            
+
             <div class="volume-area">
                 <i class="fas fa-volume-high" id="vol-icon" onclick="toggleMute()"></i>
                 <div class="slider-container vol-slider">
-                    <div class="slider-fill" id="vol-fill" style="width: 100%;"></div>
+                    <div class="slider-fill" id="vol-fill"></div>
                     <input type="range" id="volume-bar" value="100" min="0" max="100" step="1" oninput="handleVolumeChange()">
                 </div>
             </div>
