@@ -369,6 +369,9 @@
                     localStorage.removeItem('proMusicUserPlaylists');
                     localStorage.removeItem('proMusicDownloadedSongs');
                     localStorage.removeItem('proMusicLastState');
+                    localStorage.removeItem('proMusicProfilePhoto');
+                    localStorage.removeItem('proMusicUserName');
+                    localStorage.removeItem('proMusicRecHistory');
                     // We purposefully DO NOT remove DEVICE_INIT_KEY here during normal clears 
                     // so it doesn't reset the "new device" logic again unnecessarily.
                 } catch(e) {}
@@ -2459,13 +2462,16 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             const resultsDiv = document.getElementById('results');
             
             let html = `
-                <div style="display:flex; gap: 24px; margin-bottom: 30px; align-items: flex-end; flex-wrap: wrap;">
-                    <img src="${songsList[0]?.image || 'https://via.placeholder.com/200'}" loading="lazy" style="width: 220px; height: 220px; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); object-fit: cover;">
-                    <div style="flex: 1;">
-                        <h1 style="font-size: 50px; font-weight: 900; margin: 8px 0 15px 0; color: #fff; text-shadow: 0 4px 15px rgba(0,0,0,0.5); display:block; letter-spacing: -1px;">${title}</h1>
-                        <p style="color:var(--text-muted); font-size: 15px; font-weight:500;"><b>Pro Music</b> • ${songsList.length} hit songs</p>
-                        <div style="margin-top: 25px; display: flex; gap: 15px; align-items: center;">
-                            <button onclick="playSongByIndex(0)" style="width: 60px; height: 60px; border-radius: 50%; background: var(--primary-color); border: none; font-size: 22px; cursor: pointer; color: #000; box-shadow: 0 8px 25px rgba(29, 185, 84, 0.4); display: flex; justify-content: center; align-items: center; transition: 0.3s; will-change: transform;"><i class="fas fa-play" style="margin-left: 4px;"></i></button>
+                <button class="back-to-home-btn" onclick="loadHome(); setActive(document.querySelector('.menu-item'));">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </button>
+                <div class="playlist-view-header">
+                    <img src="${songsList[0]?.image || 'https://via.placeholder.com/200'}" loading="lazy" class="playlist-view-cover">
+                    <div class="playlist-view-info">
+                        <h1 class="page-header-title">${title}</h1>
+                        <p class="playlist-view-meta"><b>Pro Music</b> &bull; ${songsList.length} hit songs</p>
+                        <div class="playlist-view-actions">
+                            <button class="playlist-play-all-btn" onclick="playSongByIndex(0)"><i class="fas fa-play playlist-play-icon"></i></button>
                         </div>
                     </div>
                 </div>
@@ -2504,6 +2510,9 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             window.currentSearchData = songsList; 
             
             let html = `
+                <button class="back-to-home-btn" onclick="loadHome(); setActive(document.querySelector('.menu-item'));">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </button>
                 <h1 style="font-size: 36px; font-weight: 900; margin-bottom: 30px; color: #fff; letter-spacing: -1px;">Results for: '${query}'</h1>
                 
                 <div style="display: flex; gap: 30px; flex-wrap: wrap; margin-bottom: 50px;">
@@ -3264,8 +3273,14 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
 
         function showLikedSongs() {
             currentPlaylist = likedSongs; 
-            if(likedSongs.length > 0) renderPlaylistView("Liked Songs ❤️", likedSongs);
-            else document.getElementById('results').innerHTML = "<p style='padding:20px; color:gray;'>Koi gaana pasand nahi kiya gaya.</p>";
+            if(likedSongs.length > 0) renderPlaylistView("Liked Songs \u2764\uFE0F", likedSongs);
+            else {
+                document.getElementById('results').innerHTML = `
+                    <button class="back-to-home-btn" onclick="loadHome(); setActive(document.querySelector('.menu-item'));">
+                        <i class="fas fa-arrow-left"></i> Back to Home
+                    </button>
+                    <p style='padding:20px; color:gray;'>Koi gaana pasand nahi kiya gaya.</p>`;
+            }
             updateQueueUI();
         }
 
@@ -3281,7 +3296,11 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             
             const resultsDiv = document.getElementById('results');
             
-            let html = `<h1 style="font-size: 36px; font-weight: 900; margin-bottom: 30px; color: #fff; letter-spacing: -1px;">Library 📚</h1>`;
+            let html = `
+                <button class="back-to-home-btn" onclick="loadHome(); setActive(document.querySelector('.menu-item'));">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </button>
+                <h1 style="font-size: 36px; font-weight: 900; margin-bottom: 30px; color: #fff; letter-spacing: -1px;">Library \uD83D\uDCDA</h1>`;
 
             html += `<div class="playlist-section"><h2><i class="fas fa-folder-open" style="color:var(--primary-color);"></i> Meri Playlists</h2>`;
             const pNames = Object.keys(userPlaylists);
@@ -3952,8 +3971,116 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
         }
 
         // ==========================================
-        // USER PROFILE MODAL
+        // USER PROFILE SYSTEM (Photo Upload + localStorage)
         // ==========================================
+
+        // Load saved profile photo from localStorage on startup
+        function loadSavedProfilePhoto() {
+            try {
+                const savedPhoto = memStorage.getItem('proMusicProfilePhoto');
+                if (savedPhoto) {
+                    const profileImg = document.getElementById('profile-img');
+                    const modalProfileImg = document.getElementById('modal-profile-img');
+                    if (profileImg) {
+                        profileImg.src = savedPhoto;
+                        profileImg.classList.add('profile-uploaded');
+                    }
+                    if (modalProfileImg) modalProfileImg.src = savedPhoto;
+                }
+            } catch (e) {
+                console.warn('Could not load saved profile photo:', e);
+            }
+        }
+
+        // Handle profile photo upload via file input
+        function handleProfilePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                showToast('Please select a valid image file');
+                return;
+            }
+
+            // Validate file size (max 2MB for localStorage)
+            if (file.size > 2 * 1024 * 1024) {
+                showToast('Image too large. Please select an image under 2MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Data = e.target.result;
+
+                // Resize image to save localStorage space
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const maxSize = 200;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxSize) {
+                            height = Math.round((height * maxSize) / width);
+                            width = maxSize;
+                        }
+                    } else {
+                        if (height > maxSize) {
+                            width = Math.round((width * maxSize) / height);
+                            height = maxSize;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const resizedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+                    // Save to localStorage
+                    try {
+                        memStorage.setItem('proMusicProfilePhoto', resizedBase64);
+                    } catch (storageErr) {
+                        console.warn('Could not save profile photo to localStorage:', storageErr);
+                        showToast('Could not save photo - storage full');
+                        return;
+                    }
+
+                    // Update all profile image elements
+                    const profileImg = document.getElementById('profile-img');
+                    const modalProfileImg = document.getElementById('modal-profile-img');
+                    if (profileImg) {
+                        profileImg.src = resizedBase64;
+                        profileImg.classList.add('profile-uploaded');
+                    }
+                    if (modalProfileImg) modalProfileImg.src = resizedBase64;
+
+                    showToast('Profile photo updated!');
+                };
+                img.src = base64Data;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Initialize profile photo upload button
+        function initProfilePhotoUpload() {
+            const uploadBtn = document.getElementById('profile-upload-btn');
+            const fileInput = document.getElementById('profile-photo-input');
+
+            if (uploadBtn && fileInput) {
+                uploadBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fileInput.click();
+                });
+
+                fileInput.addEventListener('change', handleProfilePhotoUpload);
+            }
+        }
+
         function showProfileModal() {
             const modal = document.getElementById('profile-modal');
             if (!modal) return;
@@ -4141,6 +4268,26 @@ OUTPUT FORMAT: YOU MUST RETURN ONLY VALID JSON. Do not include markdown formatti
             if (savedName) {
                 const profileName = document.getElementById('profile-name');
                 if (profileName) profileName.innerText = savedName;
+            }
+
+            // ==========================================
+            // PROFILE SYSTEM INITIALIZATION
+            // ==========================================
+            loadSavedProfilePhoto();
+            initProfilePhotoUpload();
+
+            // ==========================================
+            // SEARCH INPUT EVENT LISTENERS
+            // ==========================================
+            const songInputEl = document.getElementById('songInput');
+            if (songInputEl) {
+                songInputEl.addEventListener('keyup', handleKeyPress);
+                songInputEl.addEventListener('input', handleSearchInput);
+                songInputEl.addEventListener('focus', function() {
+                    renderSearchHistory();
+                    document.getElementById('search-history-dropdown').classList.add('active');
+                });
+                songInputEl.addEventListener('blur', hideSearchHistory);
             }
         });
 
