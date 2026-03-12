@@ -2109,3 +2109,254 @@ kbd {
         display: none;
     }
 }
+
+/* ============================================
+   ADDITIONAL STYLES FOR RESTRUCTURED APP
+   ============================================ */
+
+/* Hidden title - no inline style needed */
+.hidden-title { display: none; }
+
+/* Sidebar mini player hidden by default */
+#sidebar-mini-player { display: none; }
+
+/* Sleep timer badge hidden by default */
+#sleep-timer-badge { display: none; }
+
+/* Sleep timer active hidden by default */
+#sleep-timer-active { display: none; }
+
+/* Add to playlist button hidden by default */
+#add-pl-btn { display: none; }
+
+/* Volume fill default width */
+#vol-fill { width: 100%; }
+
+/* Liked heart icon color */
+.liked-heart-icon { color: #ff6b6b; }
+
+/* Profile name edit button */
+.profile-name-edit-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--text-secondary);
+    padding: 6px 16px;
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.profile-name-edit-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    border-color: var(--primary);
+}
+.profile-name-edit-btn i { font-size: 11px; }
+
+/* Profile upload button - camera icon for photo upload */
+.profile-edit-btn i.fa-camera { font-size: 12px; }
+
+/* Modal full width button helper */
+.modal-full-btn { width: 100%; }
+
+/* Modal spacing helpers */
+.sleep-cancel-btn { margin-top: 15px; }
+.sleep-close-btns { margin-top: 15px; }
+.eq-close-btns { margin-top: 15px; }
+.shortcuts-close-btns { margin-top: 15px; }
+.share-close-btns { margin-top: 15px; }
+
+/* Play icon margin for immersive player */
+.imm-play-icon { margin-left: 4px; }
+
+/* Play icon margin for bottom player */
+.play-icon { margin-left: 3px; }
+
+/* Profile photo circular avatar in topbar */
+.user-profile img.profile-uploaded {
+    border-color: var(--primary);
+    box-shadow: 0 0 8px rgba(29, 185, 84, 0.3);
+}
+
+/* Empty playlist default message */
+.empty-playlist-message {
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 20px;
+    text-align: center;
+}
+
+.empty-playlist-message i {
+    font-size: 48px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: block;
+    opacity: 0.5;
+}
+
+.empty-playlist-message p {
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+/* Language grid cards - no inline styles */
+.language-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    padding-bottom: 40px;
+}
+
+.language-card {
+    border-radius: 12px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    will-change: transform;
+}
+
+.language-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 15px 25px rgba(0,0,0,0.4);
+}
+
+.language-card h3 {
+    color: #000;
+    font-size: 24px;
+    font-weight: 800;
+    text-shadow: 0 2px 5px rgba(255,255,255,0.5);
+}
+
+/* Page header - no inline styles */
+.page-header {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 30px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.page-header-title {
+    font-size: 50px;
+    font-weight: 900;
+    margin: 8px 0 15px 0;
+    color: #fff;
+    text-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    display: block;
+    letter-spacing: -1px;
+}
+
+/* Back to Home Button */
+.back-to-home-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.07);
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 10px 22px;
+    border-radius: 50px;
+    cursor: pointer;
+    margin-bottom: 24px;
+    transition: all 0.25s ease;
+    font-family: inherit;
+    letter-spacing: 0.3px;
+}
+
+.back-to-home-btn:hover {
+    background: rgba(29, 185, 84, 0.2);
+    color: var(--primary-color, #1db954);
+    transform: translateX(-4px);
+}
+
+.back-to-home-btn i {
+    font-size: 16px;
+    transition: transform 0.25s ease;
+}
+
+.back-to-home-btn:hover i {
+    transform: translateX(-3px);
+}
+
+/* Playlist View Header (no inline styles) */
+.playlist-view-header {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 30px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.playlist-view-cover {
+    width: 220px;
+    height: 220px;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    object-fit: cover;
+}
+
+.playlist-view-info {
+    flex: 1;
+}
+
+.playlist-view-meta {
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.playlist-view-actions {
+    margin-top: 25px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.playlist-play-all-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--primary-color, #1db954);
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: #000;
+    box-shadow: 0 8px 25px rgba(29, 185, 84, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.3s;
+    will-change: transform;
+}
+
+.playlist-play-all-btn:hover {
+    transform: scale(1.06);
+    box-shadow: 0 12px 30px rgba(29, 185, 84, 0.5);
+}
+
+.playlist-play-icon {
+    margin-left: 4px;
+}
+
+@media (max-width: 768px) {
+    .playlist-view-cover {
+        width: 160px;
+        height: 160px;
+    }
+    .back-to-home-btn {
+        font-size: 13px;
+        padding: 8px 18px;
+        margin-bottom: 18px;
+    }
+}
