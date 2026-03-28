@@ -1,0 +1,65 @@
+    <!-- ========== IMMERSIVE PLAYER ========== -->
+    <div class="immersive-player" id="immersive-player">
+        <div class="immersive-left">
+            <div class="immersive-bg" id="immersive-bg"></div>
+
+            <!-- Live Audio Visualizer -->
+            <canvas id="audio-visualizer" class="visualizer-canvas"></canvas>
+
+            <div class="immersive-content" id="imm-content-area">
+                <div class="immersive-header">
+                    <button class="immersive-close-btn" onclick="toggleImmersivePlayer()"><i class="fas fa-chevron-down"></i></button>
+                    <span class="imm-brand">Sangeet <span class="live-badge"><div class="live-dot"></div> LIVE</span></span>
+                    <button class="immersive-share-btn" onclick="showShareModal()"><i class="fas fa-share-alt"></i></button>
+                </div>
+
+                <!-- Mobile Big Artwork -->
+                <div class="immersive-mobile-art mobile-only">
+                    <img id="imm-mobile-img" src="https://via.placeholder.com/300" alt="Album Art">
+                </div>
+
+                <div class="immersive-bottom-section">
+                    <div class="immersive-song-info">
+                        <img id="immersive-img" class="desktop-only-img" src="https://via.placeholder.com/80" alt="Album Art">
+                        <div class="immersive-song-details">
+                            <h2 id="immersive-title">Not Playing</h2>
+                            <p id="immersive-artist">-</p>
+                        </div>
+                        <div class="imm-action-btns">
+                            <button class="action-btn" onclick="showAddToPlaylistModal(event)" title="Add to Playlist"><i class="fas fa-plus-circle"></i></button>
+                            <button class="action-btn" onclick="toggleLike(event)"><i class="fas fa-heart"></i></button>
+                            <button class="action-btn" id="imm-download-btn" onclick="toggleDownload(event)" title="Download"><i class="fas fa-download"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Controls -->
+                    <div class="immersive-controls mobile-only-flex">
+                        <div class="imm-progress-area">
+                            <div class="imm-slider-container">
+                                <div class="imm-slider-fill" id="imm-progress-fill"></div>
+                                <div class="imm-slider-thumb" id="imm-progress-thumb"></div>
+                                <input type="range" id="imm-progress-bar" value="0" min="0" max="100" step="0.1" oninput="seekAudioImm()">
+                            </div>
+                            <div class="imm-time-row">
+                                <span id="imm-current-time">0:00</span>
+                                <span id="imm-total-time">0:00</span>
+                            </div>
+                        </div>
+
+                        <div class="imm-control-btns">
+                            <button class="ctrl-icon" id="imm-shuffle-btn" onclick="toggleShuffle()"><i class="fas fa-shuffle"></i></button>
+                            <button class="ctrl-icon" onclick="prevSong()"><i class="fas fa-backward-step"></i></button>
+                            <button class="imm-play-btn" id="imm-play-pause-btn" onclick="togglePlay()"><i class="fas fa-play imm-play-icon"></i></button>
+                            <button class="ctrl-icon" onclick="nextSong()"><i class="fas fa-forward-step"></i></button>
+                            <button class="ctrl-icon" id="imm-repeat-btn" onclick="toggleRepeat()"><i class="fas fa-repeat"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="immersive-right">
+            <h3><i class="fas fa-stream"></i> Up Next</h3>
+            <div class="immersive-queue-list" id="immersive-queue-list"></div>
+        </div>
+    </div>

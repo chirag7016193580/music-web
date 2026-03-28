@@ -1,0 +1,214 @@
+        <!-- ===== MODALS ===== -->
+
+        <!-- PWA Install Modal -->
+        <div class="modal-overlay" id="install-modal">
+            <div class="custom-modal glass-modal">
+                <div class="modal-icon-wrap gradient-bg"><i class="fas fa-mobile-alt"></i></div>
+                <h3>Install Sangeet</h3>
+                <p>Get the full app experience. Install on your device for instant access, offline support, and zero browser clutter.</p>
+                <div class="modal-btns">
+                    <button class="btn-secondary" onclick="closeInstallModal()">Maybe Later</button>
+                    <button class="btn-primary" onclick="confirmInstall()"><i class="fas fa-download"></i> Install Now</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Playlist Modal -->
+        <div class="modal-overlay" id="create-playlist-modal">
+            <div class="custom-modal glass-modal">
+                <div class="modal-icon-wrap"><i class="fas fa-folder-plus"></i></div>
+                <h3>Create New Playlist</h3>
+                <input type="text" id="new-playlist-name" class="modal-input" placeholder="Give your playlist a name...">
+                <div class="modal-btns">
+                    <button class="btn-secondary" onclick="closeCreatePlaylistModal()">Cancel</button>
+                    <button class="btn-primary" onclick="saveNewPlaylist()"><i class="fas fa-check"></i> Create</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add to Playlist Modal -->
+        <div class="modal-overlay" id="add-to-playlist-modal">
+            <div class="custom-modal glass-modal">
+                <div class="modal-icon-wrap"><i class="fas fa-list-ul"></i></div>
+                <h3>Add to Playlist</h3>
+                <div class="playlist-select-list" id="playlist-options"></div>
+                <div class="modal-btns">
+                    <button class="btn-secondary modal-full-btn" onclick="closeAddToPlaylistModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reset App Modal -->
+        <div class="modal-overlay" id="reset-modal">
+            <div class="custom-modal glass-modal">
+                <div class="modal-icon-wrap danger-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <h3>Reset All Data?</h3>
+                <p>This will permanently delete all your Liked Songs, Downloads, Playlists, and History. This action cannot be undone.</p>
+                <div class="modal-btns">
+                    <button class="btn-secondary" onclick="closeResetModal()">Cancel</button>
+                    <button class="btn-danger" onclick="confirmResetData()"><i class="fas fa-trash"></i> Reset Everything</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sleep Timer Modal -->
+        <div class="modal-overlay" id="sleep-timer-modal">
+            <div class="custom-modal glass-modal">
+                <div class="modal-icon-wrap sleep-icon"><i class="fas fa-moon"></i></div>
+                <h3>Sleep Timer</h3>
+                <p>Music will automatically stop after the selected time.</p>
+                <div class="sleep-timer-options" id="sleep-timer-options">
+                    <div class="sleep-option" onclick="setSleepTimer(5)">5 min</div>
+                    <div class="sleep-option" onclick="setSleepTimer(10)">10 min</div>
+                    <div class="sleep-option" onclick="setSleepTimer(15)">15 min</div>
+                    <div class="sleep-option" onclick="setSleepTimer(30)">30 min</div>
+                    <div class="sleep-option" onclick="setSleepTimer(45)">45 min</div>
+                    <div class="sleep-option" onclick="setSleepTimer(60)">1 hour</div>
+                </div>
+                <div class="sleep-timer-active" id="sleep-timer-active">
+                    <div class="sleep-countdown">
+                        <i class="fas fa-clock"></i>
+                        <span id="sleep-countdown-text">--:--</span>
+                    </div>
+                    <button class="btn-danger modal-full-btn sleep-cancel-btn" onclick="cancelSleepTimer()">Cancel Timer</button>
+                </div>
+                <div class="modal-btns sleep-close-btns">
+                    <button class="btn-secondary modal-full-btn" onclick="closeSleepTimerModal()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Equalizer Modal -->
+        <div class="modal-overlay" id="equalizer-modal">
+            <div class="custom-modal glass-modal eq-modal">
+                <div class="modal-icon-wrap eq-icon"><i class="fas fa-sliders-h"></i></div>
+                <h3>Equalizer</h3>
+                <div class="eq-presets">
+                    <button class="eq-preset active" onclick="setEQPreset('flat', this)">Flat</button>
+                    <button class="eq-preset" onclick="setEQPreset('bass', this)">Bass Boost</button>
+                    <button class="eq-preset" onclick="setEQPreset('treble', this)">Treble</button>
+                    <button class="eq-preset" onclick="setEQPreset('vocal', this)">Vocal</button>
+                    <button class="eq-preset" onclick="setEQPreset('party', this)">Party</button>
+                </div>
+                <div class="eq-sliders">
+                    <div class="eq-slider-group">
+                        <label>Bass</label>
+                        <input type="range" id="eq-bass" min="-12" max="12" value="0" step="1" oninput="updateEQ()">
+                        <span id="eq-bass-val">0 dB</span>
+                    </div>
+                    <div class="eq-slider-group">
+                        <label>Mid</label>
+                        <input type="range" id="eq-mid" min="-12" max="12" value="0" step="1" oninput="updateEQ()">
+                        <span id="eq-mid-val">0 dB</span>
+                    </div>
+                    <div class="eq-slider-group">
+                        <label>Treble</label>
+                        <input type="range" id="eq-treble" min="-12" max="12" value="0" step="1" oninput="updateEQ()">
+                        <span id="eq-treble-val">0 dB</span>
+                    </div>
+                </div>
+                <div class="eq-extra-controls">
+                    <div class="eq-toggle-row">
+                        <span><i class="fas fa-cube"></i> 3D Surround</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-3d" onchange="toggle4DMode()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="eq-toggle-row">
+                        <span><i class="fas fa-gem"></i> HD Audio</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-hd" onchange="toggleHDMode()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-btns eq-close-btns">
+                    <button class="btn-secondary modal-full-btn" onclick="closeEqualizerModal()">Done</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Keyboard Shortcuts Modal -->
+        <div class="modal-overlay" id="shortcuts-modal">
+            <div class="custom-modal glass-modal">
+                <div class="modal-icon-wrap"><i class="fas fa-keyboard"></i></div>
+                <h3>Keyboard Shortcuts</h3>
+                <div class="shortcuts-list">
+                    <div class="shortcut-row"><kbd>Space</kbd><span>Play / Pause</span></div>
+                    <div class="shortcut-row"><kbd>&rarr;</kbd><span>Next Song</span></div>
+                    <div class="shortcut-row"><kbd>&larr;</kbd><span>Previous Song</span></div>
+                    <div class="shortcut-row"><kbd>&uarr;</kbd><span>Volume Up</span></div>
+                    <div class="shortcut-row"><kbd>&darr;</kbd><span>Volume Down</span></div>
+                    <div class="shortcut-row"><kbd>M</kbd><span>Mute / Unmute</span></div>
+                    <div class="shortcut-row"><kbd>S</kbd><span>Toggle Shuffle</span></div>
+                    <div class="shortcut-row"><kbd>R</kbd><span>Toggle Repeat</span></div>
+                    <div class="shortcut-row"><kbd>F</kbd><span>Fullscreen Player</span></div>
+                    <div class="shortcut-row"><kbd>L</kbd><span>Like / Unlike Song</span></div>
+                    <div class="shortcut-row"><kbd>Q</kbd><span>Toggle Queue</span></div>
+                </div>
+                <div class="modal-btns shortcuts-close-btns">
+                    <button class="btn-secondary modal-full-btn" onclick="closeShortcutsModal()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Profile Modal -->
+        <div class="modal-overlay" id="profile-modal">
+            <div class="custom-modal glass-modal profile-modal-content">
+                <div class="profile-banner">
+                    <button class="profile-close-btn" onclick="closeProfileModal()"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="profile-avatar-wrap">
+                    <img id="modal-profile-img" src="" alt="Profile">
+                    <button class="profile-edit-btn" id="profile-upload-btn" title="Upload Photo"><i class="fas fa-camera"></i></button>
+                </div>
+                <div class="profile-details">
+                    <h2 id="modal-profile-name">Music Lover</h2>
+                    <p class="profile-auth-email" id="profile-auth-email">Not signed in</p>
+                    <button class="profile-name-edit-btn" onclick="editProfileName()"><i class="fas fa-pen"></i> Edit Name</button>
+                    <div class="profile-auth-block">
+                        <div class="profile-auth-status" id="profile-auth-status">Google login not connected</div>
+                        <div class="google-signin-slot" id="google-signin-slot"></div>
+                        <button class="profile-logout-btn" id="google-logout-btn" onclick="signOutGoogle()" type="button">
+                            <i class="fas fa-right-from-bracket"></i> Sign Out
+                        </button>
+                    </div>
+                    <div class="pro-badge"><i class="fas fa-crown"></i> Premium Member</div>
+                    <div class="profile-stats">
+                        <div class="stat-card">
+                            <i class="fas fa-heart"></i>
+                            <h3 id="stat-likes">0</h3>
+                            <p>Liked</p>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-folder"></i>
+                            <h3 id="stat-playlists">0</h3>
+                            <p>Playlists</p>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-download"></i>
+                            <h3 id="stat-downloads">0</h3>
+                            <p>Saved</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Song Share Modal -->
+        <div class="modal-overlay" id="share-modal">
+            <div class="custom-modal glass-modal">
+                <div class="modal-icon-wrap"><i class="fas fa-share-alt"></i></div>
+                <h3>Share This Song</h3>
+                <div class="share-song-preview" id="share-song-preview"></div>
+                <div class="share-buttons">
+                    <button class="share-btn whatsapp" onclick="shareSong('whatsapp')"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                    <button class="share-btn twitter" onclick="shareSong('twitter')"><i class="fab fa-twitter"></i> Twitter</button>
+                    <button class="share-btn copy" onclick="shareSong('copy')"><i class="fas fa-link"></i> Copy Link</button>
+                </div>
+                <div class="modal-btns share-close-btns">
+                    <button class="btn-secondary modal-full-btn" onclick="closeShareModal()">Close</button>
+                </div>
+            </div>
+        </div>
