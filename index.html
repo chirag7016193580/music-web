@@ -8,20 +8,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Sangeet - Premium Music Experience</title>
 
-    <!-- Generated from partials/layout via tools/build-index.ps1 -->
     <!-- PWA Manifest -->
     <link rel="manifest" id="manifest-placeholder">
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="styles/base.css">
-    <link rel="stylesheet" href="styles/sidebar.css">
-    <link rel="stylesheet" href="styles/main-content.css">
-    <link rel="stylesheet" href="styles/browse-sections.css">
-    <link rel="stylesheet" href="styles/player.css">
-    <link rel="stylesheet" href="styles/modals.css">
-    <link rel="stylesheet" href="styles/responsive.css">
-    <link rel="stylesheet" href="styles/recommendations.css">
-    <link rel="stylesheet" href="styles/utilities.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -33,7 +24,6 @@
 
     <!-- Hidden file input for profile photo upload -->
     <input type="file" id="profile-photo-input" accept="image/*" hidden>
-
 
     <!-- ========== SIDEBAR ========== -->
     <div class="sidebar" id="sidebar">
@@ -138,7 +128,6 @@
         </div>
     </div>
 
-
     <!-- ========== MAIN CONTENT ========== -->
     <div class="main-content" id="main-content">
         <div class="bg-blur" id="bg-blur"></div>
@@ -169,7 +158,6 @@
         <div class="category-pills" id="category-pills"></div>
 
         <h1 id="page-title" class="hidden-title">Welcome</h1>
-
 
         <!-- ===== MODALS ===== -->
 
@@ -338,15 +326,7 @@
                 </div>
                 <div class="profile-details">
                     <h2 id="modal-profile-name">Music Lover</h2>
-                    <p class="profile-auth-email" id="profile-auth-email">Not signed in</p>
                     <button class="profile-name-edit-btn" onclick="editProfileName()"><i class="fas fa-pen"></i> Edit Name</button>
-                    <div class="profile-auth-block">
-                        <div class="profile-auth-status" id="profile-auth-status">Google login not connected</div>
-                        <div class="google-signin-slot" id="google-signin-slot"></div>
-                        <button class="profile-logout-btn" id="google-logout-btn" onclick="signOutGoogle()" type="button">
-                            <i class="fas fa-right-from-bracket"></i> Sign Out
-                        </button>
-                    </div>
                     <div class="pro-badge"><i class="fas fa-crown"></i> Premium Member</div>
                     <div class="profile-stats">
                         <div class="stat-card">
@@ -386,11 +366,9 @@
             </div>
         </div>
 
-
         <!-- Main Results Area -->
         <div id="results"></div>
     </div>
-
 
     <!-- ========== QUEUE PANEL ========== -->
     <div class="queue-panel" id="queue-panel">
@@ -401,7 +379,6 @@
         <div class="queue-now-playing-label">Now Playing</div>
         <div id="queue-list"></div>
     </div>
-
 
     <!-- ========== IMMERSIVE PLAYER ========== -->
     <div class="immersive-player" id="immersive-player">
@@ -469,7 +446,6 @@
         </div>
     </div>
 
-
     <!-- ========== BOTTOM PLAYER ========== -->
     <div class="bottom-player" id="bottom-player-area">
         <div class="now-playing" title="Open Full Screen" onclick="toggleImmersivePlayer();">
@@ -526,25 +502,12 @@
         </div>
     </div>
 
-
     <!-- Toast Notification -->
     <div id="toast" class="toast">
         <i class="fas fa-check-circle toast-icon"></i>
         <span class="toast-text">Success!</span>
     </div>
 
-
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="scripts/config/google-auth-config.js" defer></script>
-    <script src="scripts/core/smart-engine.js" defer></script>
-    <script src="scripts/core/app-state.js" defer></script>
-    <script src="scripts/features/recommendations.js" defer></script>
-    <script src="scripts/features/bootstrap-session.js" defer></script>
-    <script src="scripts/features/discovery.js" defer></script>
-    <script src="scripts/features/audio-effects.js" defer></script>
-    <script src="scripts/features/player-core.js" defer></script>
-    <script src="scripts/features/library-playlists.js" defer></script>
-    <script src="scripts/features/player-ui.js" defer></script>
-    <script src="scripts/features/modals-and-profile.js" defer></script>
+    <script src="script.js" defer></script>
 </body>
 </html>
